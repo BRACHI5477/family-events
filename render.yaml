@@ -1,0 +1,22 @@
+# Blueprint לפריסה ב-Render.com — https://render.com
+# מייבא את המערכת ישירות מ-GitHub. ראו הוראות מלאות ב-DEPLOY.md
+services:
+  - type: web
+    name: family-events
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_PASSWORD
+        sync: false        # תתבקש להזין סיסמת אדמין בעת הפריסה
+    # דיסק קבוע לשמירת הנתונים (דורש תוכנית בתשלום ב-Render).
+    # בתוכנית החינמית הסירו את הבלוק הזה — הנתונים יאופסו בכל פריסה מחדש
+    # (השתמשו ב"ייצוא גיבוי" מתוך המערכת כדי לשמור עותק).
+    # disk:
+    #   name: data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    # ואז הוסיפו envVar: DATA_DIR = /var/data

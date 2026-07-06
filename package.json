@@ -1,0 +1,24 @@
+{
+  "name": "family-events-manager",
+  "version": "1.0.0",
+  "description": "מערכת לניהול משפחה, אירועים ותזכורות אוטומטיות עם תמיכה בתאריכים עבריים ולועזיים",
+  "type": "commonjs",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js"
+  },
+  "keywords": ["family", "events", "hebrew-calendar", "reminders"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@hebcal/core": "^5.4.11",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.15"
+  }
+}
