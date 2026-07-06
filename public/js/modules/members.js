@@ -11,10 +11,11 @@ const MembersModule = {
       <div class="page-head">
         <h2>👥 בני משפחה</h2>
         <label class="muted"><input type="checkbox" id="m-arch"> הצג ארכיון</label>
-        <button class="btn btn-primary" id="m-add">➕ הוספת בן משפחה</button>
+        ${App.canEdit() ? '<button class="btn btn-primary" id="m-add">➕ הוספת בן משפחה</button>' : '<span class="muted">מצב צפייה בלבד</span>'}
       </div>
       <div class="card"><div class="table-wrap"><div id="m-list"></div></div></div>`;
-    view.querySelector('#m-add').onclick = () => this.openForm();
+    const addBtn = view.querySelector('#m-add');
+    if (addBtn) addBtn.onclick = () => this.openForm();
     const arch = view.querySelector('#m-arch');
     arch.checked = this.showArchived;
     arch.onchange = () => { this.showArchived = arch.checked; this.load(); };
@@ -40,10 +41,10 @@ const MembersModule = {
             <td>${m.current_age != null ? m.current_age : ''}</td>
             <td>${UI.esc(m.phone || '')}</td>
             <td>${UI.esc(m.email || '')}</td>
-            <td>
+            <td>${App.canEdit() ? `
               <button class="btn btn-sm" data-edit="${m.id}">✏️</button>
               <button class="btn btn-sm" data-arch="${m.id}" data-val="${m.archived ? 0 : 1}">${m.archived ? '↩️' : '📦'}</button>
-              <button class="btn btn-sm btn-danger" data-del="${m.id}">🗑️</button>
+              <button class="btn btn-sm btn-danger" data-del="${m.id}">🗑️</button>` : '<span class="muted">—</span>'}
             </td>
           </tr>`).join('')}
         </tbody>

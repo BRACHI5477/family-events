@@ -8,6 +8,7 @@ const MODULE_META = {
   reminders: { title: 'תזכורות', icon: '🔔' },
   templates: { title: 'תבניות מייל', icon: '✉️' },
   reports: { title: 'דוחות', icon: '📊' },
+  families: { title: 'משפחות', icon: '🏘️' },
   users: { title: 'משתמשים', icon: '🔐' },
   settings: { title: 'הגדרות', icon: '⚙️' },
   activity: { title: 'לוג פעילות', icon: '📜' },
@@ -16,17 +17,33 @@ const MODULE_META = {
 const App = {
   user: null,
   settings: {},
+  isSuper: false,
+  families: [],
+  currentFamily: null,
 
   async init() {
     this.bindLogin();
     this.bindChrome();
     try {
-      const { user } = await API.get('/auth/me');
-      this.user = user;
+      const me = await API.get('/auth/me');
+      this.setMe(me);
       await this.enterApp();
     } catch {
       this.showLogin();
     }
+  },
+
+  setMe(me) {
+    this.user = me.user;
+    this.isSuper = me.is_super;
+    this.families = me.families || [];
+    this.currentFamily = me.current_family;
+  },
+
+  // האם למשתמש הנוכחי יש הרשאת עריכה (לא צופה בלבד)
+  canEdit() {
+    const r = this.user && this.user.role;
+    return r === 'editor' || r === 'admin' || r === 'superadmin';
   },
 
   showLogin() {
@@ -41,8 +58,33 @@ const App = {
     this.applyTheme();
     this.applyBranding();
     this.buildNav();
-    document.getElementById('user-chip').textContent = '👤 ' + (this.user.full_name || this.user.username);
+    this.buildFamilySwitcher();
+    document.getElementById('user-chip').textContent = '👤 ' + (this.user.full_name || this.user.username)
+      + (this.isSuper ? ' · מנהלת-על' : '');
     Router.start();
+  },
+
+  // מחליף משפחה למנהלת-על (בתפריט העליון)
+  buildFamilySwitcher() {
+    const host = document.getElementById('topbar-right');
+    const existing = document.getElementById('family-switcher');
+    if (existing) existing.remove();
+    if (!this.isSuper || !this.families.length) return;
+    const sel = document.createElement('select');
+    sel.id = 'family-switcher';
+    sel.className = 'search-input';
+    sel.style.minWidth = '150px';
+    sel.innerHTML = this.families.map((f) =>
+      `<option value="${f.id}" ${f.id === this.currentFamily ? 'selected' : ''}>🏘️ ${UI.esc(f.name)}</option>`).join('');
+    sel.onchange = () => this.switchFamily(Number(sel.value));
+    host.insertBefore(sel, host.firstChild);
+  },
+
+  async switchFamily(familyId) {
+    await API.post('/auth/family-context', { family_id: familyId });
+    this.currentFamily = familyId;
+    UI.ok('עברת למשפחה: ' + (this.families.find((f) => f.id === familyId) || {}).name);
+    Router.route(); // רענון המסך הנוכחי
   },
 
   async loadSettings() {
@@ -50,8 +92,18 @@ const App = {
   },
 
   activeModules() {
-    try { return JSON.parse(this.settings.active_modules || '[]'); }
-    catch { return Object.keys(MODULE_META); }
+    let base;
+    try { base = JSON.parse(this.settings.active_modules || '[]'); }
+    catch { base = Object.keys(MODULE_META); }
+    // מודול משפחות — למנהלת-על בלבד (מוזרק אחרי דוחות)
+    if (this.isSuper && !base.includes('families')) {
+      const i = base.indexOf('reports');
+      base = i >= 0 ? [...base.slice(0, i + 1), 'families', ...base.slice(i + 1)] : ['families', ...base];
+    }
+    // מודול משתמשים — למנהל ומעלה בלבד
+    const role = this.user && this.user.role;
+    if (!(role === 'admin' || role === 'superadmin')) base = base.filter((m) => m !== 'users');
+    return base;
   },
 
   applyBranding() {
@@ -92,11 +144,12 @@ const App = {
       const errEl = document.getElementById('login-error');
       errEl.textContent = '';
       try {
-        const { user } = await API.post('/auth/login', {
+        await API.post('/auth/login', {
           username: document.getElementById('login-username').value,
           password: document.getElementById('login-password').value,
         });
-        this.user = user;
+        const me = await API.get('/auth/me');
+        this.setMe(me);
         await this.enterApp();
       } catch (err) { errEl.textContent = err.message; }
     };
@@ -106,6 +159,29 @@ const App = {
       if (!username) return;
       const r = await API.post('/auth/forgot-password', { username });
       UI.ok(r.message || 'אם המשתמש קיים, נשלחה הנחיה');
+    };
+    const reqLink = document.getElementById('link-request');
+    if (reqLink) reqLink.onclick = (e) => { e.preventDefault(); this.requestAccess(); };
+  },
+
+  // בקשת גישה כצופה (מבן משפחה) — ממתינה לאישור המנהל
+  requestAccess() {
+    const modal = UI.modal('בקשת גישה לצפייה', `
+      <p class="muted" style="margin-top:0">מלא/י את הפרטים. הגישה תינתן רק לאחר אישור מנהל המערכת.</p>
+      <form id="ra-form">
+        <div class="field" style="margin-bottom:12px"><label>שם מלא</label><input data-field="full_name" required></div>
+        <div class="field" style="margin-bottom:12px"><label>שם משתמש (או דוא"ל)</label><input data-field="username" required></div>
+        <div class="field" style="margin-bottom:12px"><label>סיסמה</label><input type="password" data-field="password" required></div>
+        <div class="form-actions"><button class="btn btn-primary">שליחת בקשה</button><button type="button" class="btn" id="ra-cancel">ביטול</button></div>
+      </form>`);
+    modal.querySelector('#ra-cancel').onclick = () => UI.closeModal();
+    modal.querySelector('#ra-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const data = UI.formData(modal.querySelector('#ra-form'));
+      try {
+        const r = await API.post('/auth/request-access', data);
+        UI.closeModal(); UI.ok(r.message || 'הבקשה נשלחה וממתינה לאישור');
+      } catch (err) { UI.err(err.message); }
     };
   },
 

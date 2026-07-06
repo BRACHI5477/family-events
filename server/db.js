@@ -17,13 +17,22 @@ db.exec('PRAGMA foreign_keys = ON');
 // Schema — לפי סעיף 20 באפיון
 // ---------------------------------------------------------------------------
 db.exec(`
+CREATE TABLE IF NOT EXISTS Families (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  notes TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS Users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   full_name TEXT,
   email TEXT,
-  role TEXT NOT NULL DEFAULT 'admin',          -- admin | editor | viewer
+  role TEXT NOT NULL DEFAULT 'admin',          -- superadmin | admin | editor | viewer
+  family_id INTEGER REFERENCES Families(id),   -- למנהלת-על: NULL (גישה לכל המשפחות)
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -77,6 +86,7 @@ CREATE TABLE IF NOT EXISTS Events (
   color TEXT,
   image_id INTEGER REFERENCES Images(id),
   notes TEXT,
+  location TEXT,                                 -- מיקום האירוע (כתובת)
   calc_mode TEXT NOT NULL DEFAULT 'gregorian',  -- hebrew | gregorian | both
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -152,22 +162,65 @@ CREATE TABLE IF NOT EXISTS ActivityLog (
 `);
 
 // ---------------------------------------------------------------------------
-// Seed — נתוני דמו ראשוניים (רק אם ריק)
+// Migrations — הוספת עמודות חסרות למסדי נתונים קיימים
 // ---------------------------------------------------------------------------
-function seed() {
-  const userCount = db.prepare('SELECT COUNT(*) c FROM Users').get().c;
-  if (userCount === 0) {
-    // סיסמת האדמין הראשוני — ניתנת להגדרה דרך ADMIN_PASSWORD (חשוב בענן!)
-    const adminPass = process.env.ADMIN_PASSWORD || '1234';
-    db.prepare(
-      'INSERT INTO Users (username, password_hash, full_name, email, role) VALUES (?,?,?,?,?)'
-    ).run('admin', bcrypt.hashSync(adminPass, 10), 'מנהל המערכת', 'admin@example.com', 'admin');
+function ensureColumn(table, col, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.find((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+}
+ensureColumn('Events', 'location', 'TEXT');
+ensureColumn('Events', 'recurring', 'INTEGER DEFAULT 1');
+ensureColumn('Users', 'family_id', 'INTEGER');
+ensureColumn('FamilyMembers', 'family_id', 'INTEGER');
+ensureColumn('Events', 'family_id', 'INTEGER');
+
+// ---------------------------------------------------------------------------
+// Seed — אתחול ראשוני (רק אם ריק)
+// ---------------------------------------------------------------------------
+const instance = require('./instanceConfig');
+
+// יצירת בסיס: משפחה + משתמש בעלים, לפי מצב העותק
+function seedUsersAndFamily() {
+  const anyUser = db.prepare('SELECT COUNT(*) c FROM Users').get().c;
+
+  if (instance.configured) {
+    // עותק עצמאי ללקוח — מנהל משלו, ללא ברכי, ללא נתוני דמו
+    if (anyUser === 0) {
+      const famId = db.prepare('INSERT INTO Families (name) VALUES (?)').run(instance.familyName).lastInsertRowid;
+      const role = instance.mode === 'multi' ? 'superadmin' : 'admin';
+      db.prepare('INSERT INTO Users (username, password_hash, full_name, email, role, family_id) VALUES (?,?,?,?,?,?)')
+        .run(instance.owner.username, bcrypt.hashSync(String(instance.owner.password), 10),
+          instance.owner.name, instance.owner.email, role, role === 'superadmin' ? null : famId);
+    }
+    return db.prepare('SELECT id FROM Families ORDER BY id LIMIT 1').get().id;
   }
+
+  // מצב מאסטר/פיתוח — ברכי מנהלת-על + admin דמו + נתוני דמו
+  let demoFamily = db.prepare("SELECT id FROM Families WHERE name = ?").get('משפחת דמו');
+  if (!demoFamily) {
+    const id = db.prepare('INSERT INTO Families (name, notes) VALUES (?,?)').run('משפחת דמו', 'משפחה לדוגמה').lastInsertRowid;
+    demoFamily = { id };
+  }
+  if (!db.prepare("SELECT id FROM Users WHERE username = ?").get('brachi5477@gmail.com')) {
+    db.prepare('INSERT INTO Users (username, password_hash, full_name, email, role, family_id) VALUES (?,?,?,?,?,?)')
+      .run('brachi5477@gmail.com', bcrypt.hashSync(process.env.SUPERADMIN_PASSWORD || 'brachi1234', 10),
+        'ברכי — מנהלת המערכת', 'brachi5477@gmail.com', 'superadmin', null);
+  }
+  if (!db.prepare("SELECT id FROM Users WHERE username = ?").get('admin')) {
+    db.prepare('INSERT INTO Users (username, password_hash, full_name, email, role, family_id) VALUES (?,?,?,?,?,?)')
+      .run('admin', bcrypt.hashSync(process.env.ADMIN_PASSWORD || '1234', 10),
+        'מנהל משפחת דמו', 'admin@example.com', 'admin', demoFamily.id);
+  }
+  return demoFamily.id;
+}
+
+function seed() {
+  const demoFamilyId = seedUsersAndFamily();
 
   // הגדרות ברירת מחדל
   const defaults = {
-    system_name: 'יומן אירועים משפחתי',
-    logo: '👨‍👩‍👧‍👦',
+    system_name: instance.configured ? instance.systemName : 'יומן אירועים משפחתי',
+    logo: instance.configured ? instance.logo : '👨‍👩‍👧‍👦',
     primary_color: '#4f8cff',
     accent_color: '#ff7a59',
     default_date_display: 'combined',           // hebrew | gregorian | combined
@@ -189,7 +242,22 @@ function seed() {
   const upsert = db.prepare('INSERT OR IGNORE INTO Settings (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(defaults)) upsert.run(k, String(v));
 
-  const typeCount = db.prepare('SELECT COUNT(*) c FROM EventTypes').get().c;
+  // סוגי אירועים נוספים — נוספים תמיד אם חסרים (idempotent), גם במסד קיים
+  const extraTypes = [
+    ['בר מצווה', '🕎', '#3b82f6'],
+    ['בת מצווה', '👑', '#ec4899'],
+    ['חתונה', '💒', '#e11d48'],
+    ['וורט', '🥂', '#f59e0b'],
+    ['אירוסין', '💐', '#d946ef'],
+    ['ברית מילה', '👶', '#0ea5e9'],
+    ['פדיון הבן', '📜', '#14b8a6'],
+    ['יום זיכרון (יארצייט)', '🕯️', '#6b7280'],
+    ['חג', '✡️', '#8b5cf6'],
+  ];
+  const ensureType = db.prepare('INSERT INTO EventTypes (name, icon, color, active) SELECT ?,?,?,1 WHERE NOT EXISTS (SELECT 1 FROM EventTypes WHERE name = ?)');
+  for (const [n, i, c] of extraTypes) ensureType.run(n, i, c, n);
+
+  const typeCount = db.prepare('SELECT COUNT(*) c FROM EventTypes WHERE name IN (?,?,?)').get('יום הולדת', 'יום נישואין', 'אירוע משפחתי').c;
   if (typeCount === 0) {
     const insType = db.prepare(
       'INSERT INTO EventTypes (name, icon, color, active) VALUES (?,?,?,1)'
@@ -214,22 +282,28 @@ function seed() {
     db.prepare('UPDATE EventTypes SET default_template_id=? WHERE id=?').run(tAnniv, anniv);
     db.prepare('UPDATE EventTypes SET default_template_id=? WHERE id=?').run(tCustom, custom);
 
-    // בני משפחה לדוגמה + אירועים
-    const insMember = db.prepare(`INSERT INTO FamilyMembers
-      (first_name, last_name, nickname, gregorian_birth, phone, email, relation)
-      VALUES (?,?,?,?,?,?,?)`);
-    const yossi = insMember.run('יוסי', 'כהן', 'יוסי', '1985-04-10', '050-1234567', 'yossi@example.com', 'אבא').lastInsertRowid;
-    const dana = insMember.run('דנה', 'כהן', 'דני', '1988-09-15', '052-7654321', 'dana@example.com', 'אמא').lastInsertRowid;
-    const noa = insMember.run('נועה', 'כהן', 'נועי', '2016-07-20', '', '', 'בת').lastInsertRowid;
+    // נתוני דמו — רק במצב מאסטר/פיתוח (לא בעותק עצמאי ללקוח)
+    if (!instance.configured) {
+      const insMember = db.prepare(`INSERT INTO FamilyMembers
+        (first_name, last_name, nickname, gregorian_birth, phone, email, relation, family_id)
+        VALUES (?,?,?,?,?,?,?,?)`);
+      const yossi = insMember.run('יוסי', 'כהן', 'יוסי', '1985-04-10', '050-1234567', 'yossi@example.com', 'אבא', demoFamilyId).lastInsertRowid;
+      const dana = insMember.run('דנה', 'כהן', 'דני', '1988-09-15', '052-7654321', 'dana@example.com', 'אמא', demoFamilyId).lastInsertRowid;
+      const noa = insMember.run('נועה', 'כהן', 'נועי', '2016-07-20', '', '', 'בת', demoFamilyId).lastInsertRowid;
 
-    const insEvent = db.prepare(`INSERT INTO Events
-      (member_id, title, type_id, gregorian_date, color, calc_mode)
-      VALUES (?,?,?,?,?,?)`);
-    insEvent.run(yossi, 'יום הולדת – יוסי', bday, '1985-04-10', '#ff7a59', 'gregorian');
-    insEvent.run(dana, 'יום הולדת – דנה', bday, '1988-09-15', '#ff7a59', 'gregorian');
-    insEvent.run(noa, 'יום הולדת – נועה', bday, '2016-07-20', '#ff7a59', 'both');
-    insEvent.run(yossi, 'יום נישואין', anniv, '2012-06-25', '#c86fe0', 'gregorian');
+      const insEvent = db.prepare(`INSERT INTO Events
+        (member_id, title, type_id, gregorian_date, color, calc_mode, family_id)
+        VALUES (?,?,?,?,?,?,?)`);
+      insEvent.run(yossi, 'יום הולדת – יוסי', bday, '1985-04-10', '#ff7a59', 'gregorian', demoFamilyId);
+      insEvent.run(dana, 'יום הולדת – דנה', bday, '1988-09-15', '#ff7a59', 'gregorian', demoFamilyId);
+      insEvent.run(noa, 'יום הולדת – נועה', bday, '2016-07-20', '#ff7a59', 'both', demoFamilyId);
+      insEvent.run(yossi, 'יום נישואין', anniv, '2012-06-25', '#c86fe0', 'gregorian', demoFamilyId);
+    }
   }
+
+  // Backfill — כל בן משפחה/אירוע ללא שיוך → המשפחה הראשונה
+  db.prepare('UPDATE FamilyMembers SET family_id = ? WHERE family_id IS NULL').run(demoFamilyId);
+  db.prepare('UPDATE Events SET family_id = ? WHERE family_id IS NULL').run(demoFamilyId);
 }
 
 seed();

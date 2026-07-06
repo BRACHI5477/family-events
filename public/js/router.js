@@ -9,6 +9,7 @@ const Router = {
     reminders: () => RemindersModule,
     templates: () => TemplatesModule,
     reports: () => ReportsModule,
+    families: () => FamiliesModule,
     users: () => UsersModule,
     settings: () => SettingsModule,
     activity: () => ActivityModule,

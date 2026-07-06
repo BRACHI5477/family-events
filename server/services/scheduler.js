@@ -25,6 +25,7 @@ function offsetDays(rule) {
 
 // מחשב את המופע הקרוב של האירוע לפי מצב החישוב
 function nextOccurrence(event, fromDate = new Date()) {
+  if (event.recurring === 0) return new Date(event.gregorian_date + 'T12:00:00'); // חד-פעמי
   if (event.calc_mode === 'hebrew') return nextHebrewAnniversary(event.gregorian_date, fromDate);
   return nextGregorianAnniversary(event.gregorian_date, fromDate);
 }
@@ -49,6 +50,7 @@ function generateReminders() {
     let schedDate = reminderDateFor(event, rule);
     const today = stripTime(new Date());
     if (schedDate < today) {
+      if (event.recurring === 0) continue; // אירוע חד-פעמי שעבר — אין תזכורת עתידית
       const nextYear = new Date(); nextYear.setFullYear(nextYear.getFullYear() + 1);
       schedDate = reminderDateFor(event, rule, nextYear);
     }

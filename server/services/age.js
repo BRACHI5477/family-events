@@ -1,7 +1,7 @@
 'use strict';
 
 // חישוב גיל אוטומטי (סעיף 10) — כמה שנים מלאו/ימלאו במופע הקרוב.
-const { toHDate, nextGregorianAnniversary, nextHebrewAnniversary, stripTime } = require('./hebrewDates');
+const { toHDate, nextGregorianAnniversary, nextHebrewAnniversary, stripTime, fmtGreg } = require('./hebrewDates');
 
 // גיל לפי הלוח הלועזי במופע הקרוב הבא של התאריך
 function gregorianAgeAtNext(birthStr, fromDate = new Date()) {
@@ -33,16 +33,33 @@ function currentGregorianAge(birthStr, fromDate = new Date()) {
   return age;
 }
 
-// מחזיר תיאור גיל לפי calc_mode של האירוע
+// מספר שנים שלמות מתאריך לידה עד תאריך יעד (לוח לועזי)
+function fullGregYears(birthStr, toDate) {
+  const b = new Date(birthStr + 'T12:00:00');
+  let y = toDate.getFullYear() - b.getFullYear();
+  if (toDate.getMonth() < b.getMonth() || (toDate.getMonth() === b.getMonth() && toDate.getDate() < b.getDate())) y--;
+  return y;
+}
+
+// גיל בעל האירוע במועד האירוע.
+// אירוע חוזר (יום הולדת/נישואין) -> גיל במופע הקרוב הבא.
+// אירוע חד-פעמי (בר מצווה/חתונה) -> גיל בתאריך האירוע הקבוע (למשל בר מצווה = 13).
 function ageForEvent(event, member, fromDate = new Date()) {
   const birthStr = member && member.gregorian_birth;
-  if (!birthStr) return { greg: null, hebrew: null, label: '' };
-  const greg = gregorianAgeAtNext(birthStr, fromDate);
-  const hebrew = hebrewAgeAtNext(birthStr, fromDate);
+  const base = event.gregorian_date;
+  if (!birthStr || !base) return { greg: null, hebrew: null, label: '' };
+
+  const oneTime = event.recurring === 0;
+  const occG = oneTime ? new Date(base + 'T12:00:00') : nextGregorianAnniversary(base, fromDate);
+  const occH = oneTime ? new Date(base + 'T12:00:00') : nextHebrewAnniversary(base, fromDate);
+
+  const greg = fullGregYears(birthStr, occG);
+  const hebrew = toHDate(fmtGreg(occH)).getFullYear() - toHDate(birthStr).getFullYear();
+
   let label = '';
   switch (event.calc_mode) {
     case 'hebrew':
-      label = hebrew != null ? `גיל ${hebrew} (עברי)` : '';
+      label = hebrew != null ? `גיל ${hebrew}` : '';
       break;
     case 'both':
       label = `גיל ${greg}` + (hebrew != null && hebrew !== greg ? ` / ${hebrew} עברי` : '');

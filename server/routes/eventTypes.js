@@ -35,7 +35,10 @@ router.put('/:id', requireRole('editor'), (req, res) => {
   res.json(db.prepare('SELECT * FROM EventTypes WHERE id = ?').get(req.params.id));
 });
 
-router.delete('/:id', requireRole('admin'), (req, res) => {
+router.delete('/:id', requireRole('editor'), (req, res) => {
+  // ניתוק הפניות כדי למנוע כשל FK
+  db.prepare('UPDATE Events SET type_id = NULL WHERE type_id = ?').run(req.params.id);
+  db.prepare('UPDATE EmailTemplates SET type_id = NULL WHERE type_id = ?').run(req.params.id);
   db.prepare('DELETE FROM EventTypes WHERE id = ?').run(req.params.id);
   logAction(req.user.userId, 'delete', 'eventType', `מחיקת סוג אירוע #${req.params.id}`);
   res.json({ ok: true });

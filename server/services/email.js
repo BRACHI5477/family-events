@@ -142,4 +142,57 @@ async function sendEventEmail({ event, occurrenceDate, templateId, recipients, u
   }
 }
 
-module.exports = { renderTemplate, buildContext, pickTemplate, sendEventEmail, buildTransport };
+// שליחת עדכון מיקום לאירוע — פעולה נפרדת מהתזכורות
+async function sendLocationEmail({ event, occurrenceDate, recipients, note, userId }) {
+  const s = getAllSettings();
+  const member = event.member_id ? db.prepare('SELECT * FROM FamilyMembers WHERE id = ?').get(event.member_id) : null;
+  const name = member ? `${member.first_name} ${member.last_name || ''}`.trim() : '';
+  const dateStr = occurrenceDate || event.gregorian_date || '';
+  const location = event.location || '';
+  const mapUrl = location ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}` : '';
+  const accent = s.primary_color || '#4f8cff';
+  const signature = (s.signature || '').replace(/\n/g, '<br>');
+
+  const subject = `📍 עדכון מיקום לאירוע: ${event.title}`;
+  const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;padding:0;background:#eef1f6;font-family:Arial,Helvetica,sans-serif;">
+    <div style="max-width:560px;margin:24px auto;background:#fff;color:#222;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.12);">
+      <div style="background:${accent};padding:24px 20px;text-align:center;color:#fff;">
+        <h1 style="margin:0;font-size:22px;">📍 עדכון מיקום לאירוע</h1>
+      </div>
+      <div style="padding:24px 28px;line-height:1.8;font-size:16px;">
+        <p style="margin:0 0 8px"><b>${escapeHtml(event.title)}</b>${name ? ' — ' + escapeHtml(name) : ''}</p>
+        ${dateStr ? `<p style="margin:0 0 8px">🗓️ תאריך: ${escapeHtml(dateStr)}</p>` : ''}
+        <p style="margin:0 0 8px">📍 מיקום: <b>${escapeHtml(location) || 'טרם נקבע'}</b></p>
+        ${mapUrl ? `<p style="margin:0 0 8px"><a href="${mapUrl}" style="color:${accent}">🗺️ פתיחה ב-Google Maps</a></p>` : ''}
+        ${note ? `<p style="margin:14px 0 0;padding:12px;background:#f6f8fc;border-radius:10px">${escapeHtml(note)}</p>` : ''}
+      </div>
+      <div style="padding:16px 28px;border-top:1px solid #eee;color:#888;font-size:13px;text-align:center;">${signature}</div>
+    </div>
+  </body></html>`;
+
+  const to = (recipients || '').trim();
+  if (!to) return { status: 'error', error: 'לא צוינו נמענים' };
+
+  const transport = buildTransport();
+  if (!transport) {
+    db.prepare('INSERT INTO EmailLog (to_addr, subject, status, error) VALUES (?,?,?,?)')
+      .run(to, subject, 'preview', 'SMTP לא מוגדר — תצוגה מקדימה');
+    logAction(userId, 'email', 'location', `תצוגה מקדימה של עדכון מיקום: ${event.title}`);
+    return { status: 'preview', html, subject, to };
+  }
+  try {
+    await transport.sendMail({
+      from: `"${s.sender_name || 'יומן אירועים'}" <${s.sender_email || s.smtp_user}>`,
+      to, subject, html,
+    });
+    db.prepare('INSERT INTO EmailLog (to_addr, subject, status) VALUES (?,?,?)').run(to, subject, 'sent');
+    logAction(userId, 'email', 'location', `עדכון מיקום נשלח אל ${to}: ${event.title}`);
+    return { status: 'sent', html, subject, to };
+  } catch (err) {
+    db.prepare('INSERT INTO EmailLog (to_addr, subject, status, error) VALUES (?,?,?,?)').run(to, subject, 'failed', err.message);
+    logAction(userId, 'error', 'location', `כשל שליחת מיקום: ${err.message}`);
+    return { status: 'failed', html, subject, to, error: err.message };
+  }
+}
+
+module.exports = { renderTemplate, buildContext, pickTemplate, sendEventEmail, sendLocationEmail, buildTransport };

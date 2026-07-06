@@ -7,8 +7,9 @@ const cookieParser = require('cookie-parser');
 require('./db'); // אתחול + seed
 const scheduler = require('./services/scheduler');
 
+const instance = require('./instanceConfig');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || instance.port || 3000;
 
 app.set('trust proxy', 1); // מאחורי proxy של הענן (HTTPS)
 app.use(express.json({ limit: '8mb' })); // limit גבוה לתמונות base64
@@ -26,11 +27,16 @@ app.use('/api/settings', require('./routes/settings').router);
 app.use('/api/activity', require('./routes/activity'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/families', require('./routes/families'));
 app.use('/api/backup', require('./routes/backup'));
 
-// Static frontend
+// Static frontend — ללא cache כדי שעדכונים ייטענו תמיד
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-app.use(express.static(PUBLIC_DIR));
+app.use(express.static(PUBLIC_DIR, {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => res.setHeader('Cache-Control', 'no-store'),
+}));
 
 // SPA fallback — כל נתיב שאינו API מחזיר את index.html
 app.get(/^(?!\/api).*/, (req, res) => {
@@ -45,7 +51,12 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n✅ יומן אירועים משפחתי פועל על http://localhost:${PORT}`);
-  console.log('   כניסת דמו: admin / 1234\n');
+  const name = instance.configured ? instance.systemName : 'יומן אירועים משפחתי';
+  console.log(`\n✅ ${name} פועל על http://localhost:${PORT}`);
+  if (instance.configured) {
+    console.log(`   כניסת מנהל: ${instance.owner.username}\n`);
+  } else {
+    console.log('   מנהלת-על: brachi5477@gmail.com / brachi1234  ·  דמו: admin / 1234\n');
+  }
   scheduler.start();
 });

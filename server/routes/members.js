@@ -22,17 +22,17 @@ function enrich(m) {
   };
 }
 
-// רשימה (כולל ארכיון אופציונלי)
+// רשימה (מסוננת לפי המשפחה הפעילה, כולל ארכיון אופציונלי)
 router.get('/', (req, res) => {
   const includeArchived = req.query.archived === '1';
   const rows = db.prepare(
-    `SELECT * FROM FamilyMembers ${includeArchived ? '' : 'WHERE archived = 0'} ORDER BY first_name`
-  ).all();
+    `SELECT * FROM FamilyMembers WHERE family_id = ? ${includeArchived ? '' : 'AND archived = 0'} ORDER BY first_name`
+  ).all(req.familyId);
   res.json(rows.map(enrich));
 });
 
 router.get('/:id', (req, res) => {
-  const m = db.prepare('SELECT * FROM FamilyMembers WHERE id = ?').get(req.params.id);
+  const m = db.prepare('SELECT * FROM FamilyMembers WHERE id = ? AND family_id = ?').get(req.params.id, req.familyId);
   if (!m) return res.status(404).json({ error: 'לא נמצא' });
   res.json(enrich(m));
 });
@@ -45,15 +45,15 @@ router.post('/', requireRole('editor'), (req, res) => {
   if (!b.hebrew_birth && b.gregorian_birth) b.hebrew_birth = gregorianToHebrewText(b.gregorian_birth);
   const vals = FIELDS.map((f) => b[f] ?? null);
   const info = db.prepare(
-    `INSERT INTO FamilyMembers (${FIELDS.join(',')}) VALUES (${FIELDS.map(() => '?').join(',')})`
-  ).run(...vals);
+    `INSERT INTO FamilyMembers (${FIELDS.join(',')}, family_id) VALUES (${FIELDS.map(() => '?').join(',')}, ?)`
+  ).run(...vals, req.familyId);
   logAction(req.user.userId, 'create', 'member', `הוספת בן משפחה: ${b.first_name} ${b.last_name || ''}`);
   res.status(201).json(enrich(db.prepare('SELECT * FROM FamilyMembers WHERE id = ?').get(info.lastInsertRowid)));
 });
 
 // עדכון
 router.put('/:id', requireRole('editor'), (req, res) => {
-  const existing = db.prepare('SELECT * FROM FamilyMembers WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT * FROM FamilyMembers WHERE id = ? AND family_id = ?').get(req.params.id, req.familyId);
   if (!existing) return res.status(404).json({ error: 'לא נמצא' });
   const b = req.body || {};
   if (b.gregorian_birth && b.gregorian_birth !== existing.gregorian_birth && !b.hebrew_birth) {
@@ -69,14 +69,14 @@ router.put('/:id', requireRole('editor'), (req, res) => {
 // ארכוב / שחזור
 router.post('/:id/archive', requireRole('editor'), (req, res) => {
   const val = req.body && req.body.archived === false ? 0 : 1;
-  db.prepare('UPDATE FamilyMembers SET archived = ? WHERE id = ?').run(val, req.params.id);
+  db.prepare('UPDATE FamilyMembers SET archived = ? WHERE id = ? AND family_id = ?').run(val, req.params.id, req.familyId);
   logAction(req.user.userId, 'update', 'member', `${val ? 'ארכוב' : 'שחזור'} בן משפחה #${req.params.id}`);
   res.json({ ok: true, archived: !!val });
 });
 
 // מחיקה
 router.delete('/:id', requireRole('admin'), (req, res) => {
-  db.prepare('DELETE FROM FamilyMembers WHERE id = ?').run(req.params.id);
+  db.prepare('DELETE FROM FamilyMembers WHERE id = ? AND family_id = ?').run(req.params.id, req.familyId);
   logAction(req.user.userId, 'delete', 'member', `מחיקת בן משפחה #${req.params.id}`);
   res.json({ ok: true });
 });

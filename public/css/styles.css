@@ -81,7 +81,8 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
 .topbar h2 { margin: 0; font-size: 18px; flex: 1; }
 .menu-btn { display: none; font-size: 22px; background: none; border: none; color: var(--text); }
-.user-chip { background: var(--surface-2); padding: 6px 12px; border-radius: 20px; font-size: 13px; color: var(--text-dim); }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.user-chip { background: var(--surface-2); padding: 6px 12px; border-radius: 20px; font-size: 13px; color: var(--text-dim); white-space: nowrap; }
 .view { padding: 22px; max-width: 1200px; width: 100%; margin: 0 auto; }
 .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 30; }
 
@@ -109,6 +110,7 @@ button { font-family: inherit; cursor: pointer; }
 .cal-cell.other { opacity: .4; }
 .cal-cell.today { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
 .cal-cell .daynum { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 600; }
+.cal-cell .heb-day { font-size: 15px; font-weight: 700; color: var(--primary); }
 .cal-cell .heb { font-size: 10.5px; color: var(--text-dim); font-weight: 400; }
 .cal-ev { font-size: 11px; padding: 2px 6px; border-radius: 6px; color: #fff; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis; }

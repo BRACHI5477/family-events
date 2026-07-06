@@ -11,19 +11,21 @@ const { fmtGreg } = require('../services/hebrewDates');
 const router = express.Router();
 router.use(requireAuth);
 
-// חוקי תזכורת של אירוע
+// חוקי תזכורת של אירוע (מסונן למשפחה הפעילה דרך שיוך האירוע)
 router.get('/rules', (req, res) => {
   const eventId = req.query.event_id;
-  let sql = 'SELECT * FROM ReminderRules';
-  const params = [];
-  if (eventId) { sql += ' WHERE event_id = ?'; params.push(eventId); }
-  sql += ' ORDER BY id';
+  let sql = `SELECT rr.* FROM ReminderRules rr JOIN Events e ON e.id = rr.event_id WHERE e.family_id = ?`;
+  const params = [req.familyId];
+  if (eventId) { sql += ' AND rr.event_id = ?'; params.push(eventId); }
+  sql += ' ORDER BY rr.id';
   res.json(db.prepare(sql).all(...params));
 });
 
 router.post('/rules', requireRole('editor'), (req, res) => {
   const b = req.body || {};
   if (!b.event_id || !b.offset_type) return res.status(400).json({ error: 'event_id ו-offset_type חובה' });
+  const owns = db.prepare('SELECT id FROM Events WHERE id = ? AND family_id = ?').get(b.event_id, req.familyId);
+  if (!owns) return res.status(403).json({ error: 'האירוע אינו שייך למשפחה הפעילה' });
   const info = db.prepare(
     'INSERT INTO ReminderRules (event_id, offset_type, custom_days, send_time, recipients, template_id, active) VALUES (?,?,?,?,?,?,?)'
   ).run(b.event_id, b.offset_type, b.custom_days || null, b.send_time || '08:00',
@@ -34,7 +36,7 @@ router.post('/rules', requireRole('editor'), (req, res) => {
 });
 
 router.put('/rules/:id', requireRole('editor'), (req, res) => {
-  const ex = db.prepare('SELECT * FROM ReminderRules WHERE id = ?').get(req.params.id);
+  const ex = db.prepare('SELECT rr.* FROM ReminderRules rr JOIN Events e ON e.id = rr.event_id WHERE rr.id = ? AND e.family_id = ?').get(req.params.id, req.familyId);
   if (!ex) return res.status(404).json({ error: 'לא נמצא' });
   const b = req.body || {};
   db.prepare(`UPDATE ReminderRules SET offset_type=?, custom_days=?, send_time=?, recipients=?, template_id=?, active=? WHERE id=?`)
@@ -47,6 +49,8 @@ router.put('/rules/:id', requireRole('editor'), (req, res) => {
 });
 
 router.delete('/rules/:id', requireRole('editor'), (req, res) => {
+  const ex = db.prepare('SELECT rr.id FROM ReminderRules rr JOIN Events e ON e.id = rr.event_id WHERE rr.id = ? AND e.family_id = ?').get(req.params.id, req.familyId);
+  if (!ex) return res.status(404).json({ error: 'לא נמצא' });
   db.prepare('DELETE FROM ReminderRules WHERE id = ?').run(req.params.id);
   logAction(req.user.userId, 'delete', 'reminderRule', `מחיקת כלל תזכורת #${req.params.id}`);
   res.json({ ok: true });
@@ -57,9 +61,10 @@ router.get('/', (req, res) => {
   const rows = db.prepare(`
     SELECT r.*, e.title AS event_title, rr.offset_type
     FROM Reminders r
-    LEFT JOIN Events e ON e.id = r.event_id
+    JOIN Events e ON e.id = r.event_id
     LEFT JOIN ReminderRules rr ON rr.id = r.rule_id
-    ORDER BY r.scheduled_for ASC, r.id DESC`).all();
+    WHERE e.family_id = ?
+    ORDER BY r.scheduled_for ASC, r.id DESC`).all(req.familyId);
   res.json(rows);
 });
 
@@ -73,7 +78,7 @@ router.post('/generate', requireRole('editor'), (req, res) => {
 // שליחה מיידית (בדיקה) של מייל לאירוע
 router.post('/send-now', requireRole('editor'), async (req, res) => {
   const { event_id, template_id, recipients } = req.body || {};
-  const event = db.prepare('SELECT * FROM Events WHERE id = ?').get(event_id);
+  const event = db.prepare('SELECT * FROM Events WHERE id = ? AND family_id = ?').get(event_id, req.familyId);
   if (!event) return res.status(404).json({ error: 'אירוע לא נמצא' });
   const result = await sendEventEmail({
     event,

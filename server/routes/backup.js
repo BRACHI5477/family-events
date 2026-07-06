@@ -10,7 +10,7 @@ router.use(requireAuth);
 
 // טבלאות לגיבוי, בסדר תלות (הורים לפני ילדים)
 const TABLES = [
-  'Users', 'Images', 'FamilyMembers', 'FamilyRelations', 'EventTypes',
+  'Families', 'Users', 'Images', 'FamilyMembers', 'FamilyRelations', 'EventTypes',
   'EmailTemplates', 'Events', 'ReminderRules', 'Reminders', 'EmailQueue',
   'EmailLog', 'Settings', 'ActivityLog',
 ];

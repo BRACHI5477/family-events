@@ -77,10 +77,26 @@ function fmtGreg(d) {
   return `${y}-${m}-${day}`;
 }
 
+// המרת חלקי תאריך עברי (יום, חודש hebcal, שנה) -> תאריך לועזי YYYY-MM-DD
+function hebrewPartsToGreg(hday, hmonth, hyear) {
+  let d = Number(hday), m = Number(hmonth), y = Number(hyear);
+  // אדר ב׳ (13) בשנה שאינה מעוברת -> אדר (12)
+  if (m === 13 && !HDate.isLeapYear(y)) m = 12;
+  const hd = new HDate(d, m, y);
+  return fmtGreg(hd.greg());
+}
+
+// השנה העברית הנוכחית (מספרית)
+function currentHebrewYear(fromDate = new Date()) {
+  return new HDate(fromDate).getFullYear();
+}
+
 module.exports = {
   toHDate,
   gregorianToHebrewText,
   hebrewParts,
+  hebrewPartsToGreg,
+  currentHebrewYear,
   nextHebrewAnniversary,
   nextGregorianAnniversary,
   stripTime,
