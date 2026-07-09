@@ -8,14 +8,30 @@ const { gregorianToHebrewText } = require('./hebrewDates');
 const { ageForEvent } = require('./age');
 
 // בונה transport מתוך ההגדרות; מחזיר null אם SMTP לא הוגדר (מצב preview)
-function buildTransport() {
+// הגדרות המייל: משתני סביבה קודמים להגדרות במסד הנתונים.
+// כך בענן (Render) ההגדרות שורדות פריסה מחדש, גם כשהמסד מתאפס.
+function mailConfig() {
   const s = getAllSettings();
-  if (!s.smtp_host || !s.smtp_user) return null;
+  const env = process.env;
+  return {
+    host: env.SMTP_HOST || s.smtp_host,
+    port: parseInt(env.SMTP_PORT || s.smtp_port || '587', 10),
+    secure: String(env.SMTP_SECURE || s.smtp_secure) === 'true',
+    user: env.SMTP_USER || s.smtp_user,
+    pass: env.SMTP_PASS || s.smtp_pass,
+    senderName: env.SENDER_NAME || s.sender_name || 'יומן אירועים',
+    senderEmail: env.SENDER_EMAIL || s.sender_email || env.SMTP_USER || s.smtp_user,
+  };
+}
+
+function buildTransport() {
+  const c = mailConfig();
+  if (!c.host || !c.user) return null;
   return nodemailer.createTransport({
-    host: s.smtp_host,
-    port: parseInt(s.smtp_port || '587', 10),
-    secure: String(s.smtp_secure) === 'true',
-    auth: { user: s.smtp_user, pass: s.smtp_pass },
+    host: c.host,
+    port: c.port,
+    secure: c.secure,
+    auth: { user: c.user, pass: c.pass },
     // מגבלות זמן — כדי שכשל יחזור מהר עם שגיאה ברורה במקום להיתקע
     connectionTimeout: 10000,
     greetingTimeout: 10000,
@@ -118,7 +134,7 @@ async function sendEventEmail({ event, occurrenceDate, templateId, recipients, u
   const s = getAllSettings();
   const to = recipients || (event.member_id
     ? (db.prepare('SELECT email FROM FamilyMembers WHERE id = ?').get(event.member_id) || {}).email
-    : '') || s.sender_email;
+    : '') || mailConfig().senderEmail;
 
   const transport = buildTransport();
   if (!transport) {
@@ -130,7 +146,7 @@ async function sendEventEmail({ event, occurrenceDate, templateId, recipients, u
 
   try {
     await transport.sendMail({
-      from: `"${s.sender_name || 'יומן אירועים'}" <${s.sender_email || s.smtp_user}>`,
+      from: `"${mailConfig().senderName}" <${mailConfig().senderEmail}>`,
       to,
       subject,
       html,
@@ -186,7 +202,7 @@ async function sendLocationEmail({ event, occurrenceDate, recipients, note, user
   }
   try {
     await transport.sendMail({
-      from: `"${s.sender_name || 'יומן אירועים'}" <${s.sender_email || s.smtp_user}>`,
+      from: `"${mailConfig().senderName}" <${mailConfig().senderEmail}>`,
       to, subject, html,
     });
     db.prepare('INSERT INTO EmailLog (to_addr, subject, status) VALUES (?,?,?)').run(to, subject, 'sent');
