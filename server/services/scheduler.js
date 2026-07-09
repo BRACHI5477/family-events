@@ -68,7 +68,17 @@ function generateReminders() {
   return created;
 }
 
-// שולח תזכורות שהגיע זמנן (scheduled_for <= today, status pending)
+// האם הגיעה שעת השליחה? (ביום התזכורת עצמו — רק אחרי send_time; ימים שעברו — תמיד)
+function timeHasCome(reminder, rule, now = new Date()) {
+  const today = fmtGreg(stripTime(now));
+  if (reminder.scheduled_for < today) return true;         // תזכורת שאיחרה — לשלוח מיד
+  if (reminder.scheduled_for > today) return false;         // עוד לא הגיע היום
+  const [h, m] = String(rule.send_time || '08:00').split(':').map(Number);
+  const minutesNow = now.getHours() * 60 + now.getMinutes();
+  return minutesNow >= ((h || 0) * 60 + (m || 0));
+}
+
+// שולח תזכורות שהגיע זמנן (התאריך הגיע וגם שעת השליחה עברה)
 async function processDueReminders() {
   const today = fmtGreg(stripTime(new Date()));
   const due = db.prepare("SELECT * FROM Reminders WHERE status = 'pending' AND scheduled_for <= ?").all(today);
@@ -80,6 +90,7 @@ async function processDueReminders() {
       db.prepare("UPDATE Reminders SET status = 'failed' WHERE id = ?").run(r.id);
       continue;
     }
+    if (!timeHasCome(r, rule)) continue;                    // עוד לא הגיעה שעת השליחה
     const result = await sendEventEmail({
       event,
       occurrenceDate: fmtGreg(nextOccurrence(event)),
@@ -94,22 +105,47 @@ async function processDueReminders() {
   return sent;
 }
 
+// ריצה מלאה: מייצר תזכורות עתידיות ושולח את אלו שהגיע זמנן
+let running = false;
+async function runNow(source = 'cron') {
+  if (running) return { skipped: true };                    // מונע ריצות חופפות
+  running = true;
+  try {
+    const created = generateReminders();
+    const sent = await processDueReminders();
+    if (sent > 0 || created > 0) {
+      logAction(null, 'email', 'scheduler', `ריצת תזכורות (${source}): נוצרו ${created}, נשלחו ${sent}`);
+    }
+    return { created, sent };
+  } catch (e) {
+    logAction(null, 'error', 'scheduler', `שגיאת תזכורות: ${e.message}`);
+    return { error: e.message };
+  } finally {
+    running = false;
+  }
+}
+
+// הרצה "אופורטוניסטית" — בכל בקשה לאתר, לכל היותר פעם ב-10 דקות.
+// כך תזכורות נשלחות גם כשהשרת החינמי נרדם ומתעורר רק בביקור.
+let lastOpportunistic = 0;
+function opportunisticRun() {
+  const now = Date.now();
+  if (now - lastOpportunistic < 10 * 60 * 1000) return;
+  lastOpportunistic = now;
+  runNow('ביקור באתר').catch(() => {});
+}
+
 let started = false;
 function start() {
   if (started) return;
   started = true;
-  // ריצה יומית ב-06:00 (שרת) — מייצר תזכורות ושולח את אלו שהגיע זמנן
-  cron.schedule('0 6 * * *', async () => {
-    try {
-      generateReminders();
-      const sent = await processDueReminders();
-      logAction(null, 'email', 'scheduler', `ריצת תזכורות יומית: נשלחו ${sent}`);
-    } catch (e) {
-      logAction(null, 'error', 'scheduler', e.message);
-    }
-  });
-  // ריצה ראשונית בעת עליית השרת (יצירת תזכורות בלבד, ללא שליחה אוטומטית)
+  // כל 15 דקות — כדי לכבד את שעת השליחה שהוגדרה בכל תזכורת
+  cron.schedule('*/15 * * * *', () => { runNow('תזמון'); });
+  // ריצה ראשונית בעת עליית השרת (יצירת תזכורות בלבד, ללא שליחה)
   try { generateReminders(); } catch (e) { /* ignore */ }
 }
 
-module.exports = { start, generateReminders, processDueReminders, reminderDateFor, nextOccurrence, offsetDays, OFFSET_DAYS };
+module.exports = {
+  start, runNow, opportunisticRun, generateReminders, processDueReminders,
+  reminderDateFor, nextOccurrence, offsetDays, OFFSET_DAYS, timeHasCome,
+};

@@ -15,6 +15,20 @@ app.set('trust proxy', 1); // מאחורי proxy של הענן (HTTPS)
 app.use(express.json({ limit: '8mb' })); // limit גבוה לתמונות base64
 app.use(cookieParser());
 
+// בכל בקשה — בדיקת תזכורות (מוגבל לפעם ב-10 דק'). מבטיח שליחה גם בשרת שנרדם.
+app.use((req, res, next) => { scheduler.opportunisticRun(); next(); });
+
+// בדיקת חיים — לשירותי "פינג" שמונעים מהשרת להירדם
+app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+
+// הפעלת התזכורות מבחוץ (למתזמן חיצוני). אם הוגדר CRON_TOKEN — נדרש טוקן.
+app.all('/api/cron/run', async (req, res) => {
+  const token = process.env.CRON_TOKEN;
+  if (token && req.query.token !== token) return res.status(403).json({ error: 'טוקן שגוי' });
+  const result = await scheduler.runNow('מתזמן חיצוני');
+  res.json({ ok: true, ...result });
+});
+
 // API
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/members', require('./routes/members'));
