@@ -185,6 +185,8 @@ const EventsModule = {
   openForm(e) {
     e = e || {};
     const g = (k) => UI.esc(e[k] || '');
+    // תאריך עברי לטעינה: בעריכה — התאריך האמיתי של האירוע; באירוע חדש — ברירת מחדל
+    const hp = e.hebrew_parts || { day: 1, month: 7, year: Hebrew.yearNum() };
     const opt = (arr, val, label, sel) => arr.map((x) =>
       `<option value="${x[val]}" ${x[val] == sel ? 'selected' : ''}>${UI.esc(x[label])}</option>`).join('');
     const body = `
@@ -209,13 +211,20 @@ const EventsModule = {
             </div>
           </div>
           <div class="field heb-block"><label>יום עברי</label><select id="e-hday">${
-            Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}">${Hebrew.gematriya(i + 1)}</option>`).join('')
+            Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}" ${hp.day === i + 1 ? 'selected' : ''}>${Hebrew.gematriya(i + 1)}</option>`).join('')
           }</select></div>
           <div class="field heb-block"><label>חודש עברי</label><select id="e-hmonth">${
-            this.HMONTHS.map(([n, l]) => `<option value="${n}">${l}</option>`).join('')
+            this.HMONTHS.map(([n, l]) => `<option value="${n}" ${hp.month === n ? 'selected' : ''}>${l}</option>`).join('')
           }</select></div>
           <div class="field heb-block"><label>שנה עברית</label><select id="e-hyear">${
-            (() => { const cur = Hebrew.yearNum(); let o = ''; for (let y = cur + 20; y >= cur - 120; y--) o += `<option value="${y}" ${y === cur ? 'selected' : ''} title="${y}">${Hebrew.gematriya(y)}</option>`; return o; })()
+            (() => {
+              const cur = Hebrew.yearNum();
+              const top = Math.max(cur + 20, hp.year + 10);      // תמיד כולל גם את השנה הנוכחית
+              const bottom = Math.min(cur - 120, hp.year - 10);  // וגם את שנת האירוע
+              let o = '';
+              for (let y = top; y >= bottom; y--) o += `<option value="${y}" ${y === hp.year ? 'selected' : ''} title="${y}">${Hebrew.gematriya(y)}</option>`;
+              return o;
+            })()
           }</select></div>
           <div class="field greg-block"><label>תאריך (לועזי)</label><input type="date" data-field="gregorian_date" value="${g('gregorian_date')}"></div>
           <div class="field greg-block"><label>מצב חישוב</label><select data-field="calc_mode">
@@ -234,7 +243,7 @@ const EventsModule = {
           <div class="field full" style="border-top:1px solid var(--border);padding-top:12px">
             <label><input type="checkbox" id="e-autorem" checked> 🔔 הכן אוטומטית תזכורת מייל לאירוע</label>
           </div>
-          <div class="field" id="e-autorem-when"><label>מתי לשלוח את התזכורת</label>
+          <div class="field autorem-opt" id="e-autorem-when"><label>מתי לשלוח את התזכורת</label>
             <select id="e-remoffset">
               <option value="week" selected>שבוע לפני</option>
               <option value="two_weeks">שבועיים לפני</option>
@@ -243,6 +252,15 @@ const EventsModule = {
               <option value="day_before">יום לפני</option>
               <option value="same_day">באותו יום</option>
             </select>
+          </div>
+          <div class="field autorem-opt"><label>תבנית המייל</label>
+            <select id="e-remtpl">
+              <option value="">ברירת מחדל לפי סוג האירוע (מומלץ)</option>
+              ${this.templates.map((t) => `<option value="${t.id}">${UI.esc(t.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field full autorem-opt"><label>נמענים — אפשר כמה כתובות, מופרדות בפסיק</label>
+            <input id="e-remrecipients" placeholder="ריק = המייל של בעל האירוע. לדוגמה: aba@gmail.com, ima@gmail.com">
           </div>`}
         </div>
         <div class="form-actions">
@@ -289,8 +307,7 @@ const EventsModule = {
     // מתג תזכורת אוטומטית (אירוע חדש בלבד)
     const autoRem = modal.querySelector('#e-autorem');
     if (autoRem) {
-      const whenBox = modal.querySelector('#e-autorem-when');
-      const syncRem = () => whenBox.classList.toggle('hidden', !autoRem.checked);
+      const syncRem = () => modal.querySelectorAll('.autorem-opt').forEach((el) => el.classList.toggle('hidden', !autoRem.checked));
       autoRem.onchange = syncRem; syncRem();
     }
 
@@ -311,6 +328,8 @@ const EventsModule = {
         const autoRem = modal.querySelector('#e-autorem');
         data.auto_reminder = autoRem && autoRem.checked;
         data.reminder_offset = (modal.querySelector('#e-remoffset') || {}).value || 'week';
+        data.reminder_template_id = (modal.querySelector('#e-remtpl') || {}).value || null;
+        data.reminder_recipients = ((modal.querySelector('#e-remrecipients') || {}).value || '').trim() || null;
       }
       try {
         // יצירת סוג אירוע חדש אם נבחר

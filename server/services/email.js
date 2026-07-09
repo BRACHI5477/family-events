@@ -58,12 +58,26 @@ function renderTemplate(template, ctx) {
     '{{age}}': ctx.age != null ? escapeHtml(ctx.age) : '',
     '{{date}}': escapeHtml(ctx.date || ''),
     '{{hebrew_date}}': escapeHtml(ctx.hebrew_date || ''),
+    '{{location}}': escapeHtml(ctx.location || ''),
+    '{{notes}}': escapeHtml(ctx.notes || ''),
   };
-  let body = template.body_html || '';
+  const rawBody = template.body_html || '';
+  let body = rawBody;
   let title = template.title || '';
   for (const [k, v] of Object.entries(replacements)) {
     body = body.split(k).join(v);
     title = title.split(k).join(v);
+  }
+
+  // מיקום והערות — נוספים אוטומטית אם קיימים ולא שולבו כבר בתבנית ידנית
+  if (ctx.location && !rawBody.includes('{{location}}')) {
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ctx.location)}`;
+    body += `<p style="margin:16px 0 4px">📍 <b>מיקום:</b> ${escapeHtml(ctx.location)}</p>`
+      + `<p style="margin:0"><a href="${mapUrl}" style="color:${accent};font-size:14px">🗺️ פתיחה ב-Google Maps</a></p>`;
+  }
+  if (ctx.notes && !rawBody.includes('{{notes}}')) {
+    body += `<p style="margin:14px 0 0;padding:12px;background:#f6f8fc;border-radius:10px;color:#555;font-size:15px;text-align:right">`
+      + `📝 ${escapeHtml(ctx.notes)}</p>`;
   }
 
   const photo = ctx.photo
@@ -106,6 +120,8 @@ function buildContext(event, occurrenceDate) {
     age: event.calc_mode === 'hebrew' ? age.hebrew : age.greg,
     date: dateStr,
     hebrew_date: dateStr ? gregorianToHebrewText(dateStr) : '',
+    location: event.location || '',
+    notes: event.notes || '',
     photo: image,
   };
 }
@@ -122,7 +138,7 @@ function pickTemplate(event, templateId) {
     if (t) return t;
   }
   return db.prepare('SELECT * FROM EmailTemplates WHERE type_id = ? AND active = 1').get(event.type_id)
-    || { title: event.title, body_html: '<p>{{title}} — {{date}}</p>', signature: '' };
+    || { title: event.title, body_html: '<p>{{title}} — {{hebrew_date}}</p>', signature: '' };
 }
 
 // שליחה בפועל (או preview). מחזיר { status, html, subject }
@@ -181,7 +197,7 @@ async function sendLocationEmail({ event, occurrenceDate, recipients, note, user
       </div>
       <div style="padding:24px 28px;line-height:1.8;font-size:16px;">
         <p style="margin:0 0 8px"><b>${escapeHtml(event.title)}</b>${name ? ' — ' + escapeHtml(name) : ''}</p>
-        ${dateStr ? `<p style="margin:0 0 8px">🗓️ תאריך: ${escapeHtml(dateStr)}</p>` : ''}
+        ${dateStr ? `<p style="margin:0 0 8px">🗓️ תאריך: ${escapeHtml(gregorianToHebrewText(dateStr))}</p>` : ''}
         <p style="margin:0 0 8px">📍 מיקום: <b>${escapeHtml(location) || 'טרם נקבע'}</b></p>
         ${mapUrl ? `<p style="margin:0 0 8px"><a href="${mapUrl}" style="color:${accent}">🗺️ פתיחה ב-Google Maps</a></p>` : ''}
         ${note ? `<p style="margin:14px 0 0;padding:12px;background:#f6f8fc;border-radius:10px">${escapeHtml(note)}</p>` : ''}

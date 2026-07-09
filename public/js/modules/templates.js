@@ -63,7 +63,19 @@ const TemplatesModule = {
             <div class="field"><label>סוג אירוע</label><select data-field="type_id"><option value="">—</option>${typeOpt}</select></div>
             <div class="field"><label>פעיל</label><select data-field="active"><option value="1" ${t.active !== 0 ? 'selected' : ''}>כן</option><option value="0" ${t.active === 0 ? 'selected' : ''}>לא</option></select></div>
             <div class="field full"><label>כותרת המייל</label><input data-field="title" value="${g('title')}" placeholder="מזל טוב {{name}}!"></div>
-            <div class="field full"><label>גוף ההודעה (HTML) — {{name}} {{age}} {{date}} {{title}}</label><textarea data-field="body_html" style="min-height:120px">${g('body_html')}</textarea></div>
+            <div class="field full"><label>גוף ההודעה</label><textarea data-field="body_html" style="min-height:120px">${g('body_html')}</textarea>
+              <div class="muted" style="margin-top:6px;line-height:1.9">
+                שדות שיתמלאו אוטומטית — העתיקו לתוך ההודעה:<br>
+                <code>{{name}}</code> שם בעל האירוע ·
+                <code>{{age}}</code> גיל ·
+                <code>{{hebrew_date}}</code> תאריך עברי ·
+                <code>{{title}}</code> כותרת האירוע<br>
+                <code>{{location}}</code> מיקום ·
+                <code>{{notes}}</code> הערות ·
+                <code>{{date}}</code> תאריך לועזי<br>
+                💡 מיקום והערות נוספים אוטומטית בסוף המייל אם קיימים — אין צורך להוסיף ידנית.
+              </div>
+            </div>
             <div class="field"><label>צבע רקע</label><input type="color" data-field="bg_color" value="${t.bg_color || '#ffffff'}"></div>
             <div class="field"><label>צבע טקסט</label><input type="color" data-field="text_color" value="${t.text_color || '#222222'}"></div>
             <div class="field"><label>צבע הדגשה</label><input type="color" data-field="accent_color" value="${t.accent_color || '#4f8cff'}"></div>

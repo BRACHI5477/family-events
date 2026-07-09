@@ -6,6 +6,7 @@ const { requireAuth, requireRole } = require('../auth');
 const { logAction } = require('../services/activityLog');
 const {
   gregorianToHebrewText, nextGregorianAnniversary, nextHebrewAnniversary, fmtGreg, hebrewPartsToGreg,
+  hebrewParts,
 } = require('../services/hebrewDates');
 
 // אם הוזנו חלקי תאריך עברי — המר ללועזי וקבע מצב חישוב עברי
@@ -50,6 +51,8 @@ function enrich(ev, fromDate = new Date()) {
     type_color: type ? type.color : null,
     display_color: ev.color || (type ? type.color : '#4f8cff'),
     hebrew_date_text: base ? gregorianToHebrewText(base) : (ev.hebrew_date || ''),
+    // חלקי התאריך העברי — כדי שטופס העריכה יטען את התאריך האמיתי ולא ברירת מחדל
+    hebrew_parts: base ? hebrewParts(base) : null,
     next_gregorian: nextGreg,
     next_hebrew: nextHeb,
     age,
@@ -90,7 +93,7 @@ router.post('/', requireRole('editor'), (req, res) => {
     const offset = b.reminder_offset || 'week';
     const sendTime = b.reminder_time || '08:00';
     db.prepare('INSERT INTO ReminderRules (event_id, offset_type, send_time, recipients, template_id, active) VALUES (?,?,?,?,?,1)')
-      .run(info.lastInsertRowid, offset, sendTime, b.reminder_recipients || null, null);
+      .run(info.lastInsertRowid, offset, sendTime, b.reminder_recipients || null, b.reminder_template_id || null);
     try { require('../services/scheduler').generateReminders(); } catch (e) { /* ignore */ }
     logAction(req.user.userId, 'create', 'reminderRule', `תזכורת אוטומטית לאירוע: ${b.title}`);
   }
