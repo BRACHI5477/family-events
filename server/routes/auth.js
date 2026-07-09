@@ -98,15 +98,17 @@ router.post('/request-access', (req, res) => {
 });
 
 // שכחתי סיסמה (דמו — מאפס ל-1234)
+// שכחתי סיסמה — אינו מאפס סיסמה! רק מתעד בקשה ומפנה למנהל.
+// (איפוס עצמי ללא אימות זהות הוא פרצת אבטחה)
 router.post('/forgot-password', (req, res) => {
   const { username } = req.body || {};
-  const user = db.prepare('SELECT * FROM Users WHERE username = ?').get(username);
-  if (user) {
-    db.prepare('UPDATE Users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync('1234', 10), user.id);
-    logAction(user.id, 'update', 'auth', 'איפוס סיסמה (שכחתי סיסמה)');
-  }
-  // תמיד תשובה זהה כדי לא לחשוף קיום משתמש
-  res.json({ ok: true, message: 'אם המשתמש קיים, הסיסמה אופסה ל-1234 (מצב דמו)' });
+  const user = db.prepare('SELECT id FROM Users WHERE username = ?').get(username);
+  if (user) logAction(user.id, 'update', 'auth', `בקשת איפוס סיסמה: ${username}`);
+  // תשובה זהה תמיד, כדי לא לחשוף אילו משתמשים קיימים
+  res.json({
+    ok: true,
+    message: 'הבקשה נרשמה. לאיפוס סיסמה יש לפנות למנהל/ת המערכת, שיאפס/תאפס עבורך במסך המשתמשים.',
+  });
 });
 
 module.exports = router;

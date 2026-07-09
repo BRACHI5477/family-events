@@ -56,7 +56,7 @@ app.listen(PORT, () => {
   if (instance.configured) {
     console.log(`   כניסת מנהל: ${instance.owner.username}\n`);
   } else {
-    console.log('   מנהלת-על: brachi5477@gmail.com / brachi1234  ·  דמו: admin / 1234\n');
+    console.log('   מנהלת-על: brachi5477@gmail.com\n');
   }
   scheduler.start();
 });

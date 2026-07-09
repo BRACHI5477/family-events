@@ -206,11 +206,7 @@ function seedUsersAndFamily() {
       .run('brachi5477@gmail.com', bcrypt.hashSync(process.env.SUPERADMIN_PASSWORD || 'brachi1234', 10),
         'ברכי — מנהלת המערכת', 'brachi5477@gmail.com', 'superadmin', null);
   }
-  if (!db.prepare("SELECT id FROM Users WHERE username = ?").get('admin')) {
-    db.prepare('INSERT INTO Users (username, password_hash, full_name, email, role, family_id) VALUES (?,?,?,?,?,?)')
-      .run('admin', bcrypt.hashSync(process.env.ADMIN_PASSWORD || '1234', 10),
-        'מנהל משפחת דמו', 'admin@example.com', 'admin', demoFamily.id);
-  }
+  // משתמש admin/1234 בוטל — היווה פרצת אבטחה. מנהלת-העל יוצרת משתמשים במסך "משתמשים".
   return demoFamily.id;
 }
 
