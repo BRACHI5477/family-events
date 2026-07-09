@@ -59,8 +59,9 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ===== App layout ===== */
 .app { display: flex; min-height: 100vh; }
-.sidebar { width: var(--sidebar-w); background: var(--surface); border-inline-start: 1px solid var(--border);
-  display: flex; flex-direction: column; position: fixed; inset-block: 0; inset-inline-end: 0;
+/* תפריט הצד בצד ימין (בממשק RTL, inline-start = ימין) */
+.sidebar { width: var(--sidebar-w); background: var(--surface); border-inline-end: 1px solid var(--border);
+  display: flex; flex-direction: column; position: fixed; inset-block: 0; inset-inline-start: 0;
   z-index: 40; box-shadow: var(--shadow); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 18px 18px; border-bottom: 1px solid var(--border); }
 .brand-logo { font-size: 26px; }
@@ -76,7 +77,7 @@ button { font-family: inherit; cursor: pointer; }
   width: 40px; height: 38px; font-size: 17px; }
 .sidebar-footer .btn { flex: 1; }
 
-.main { flex: 1; margin-inline-end: var(--sidebar-w); display: flex; flex-direction: column; min-width: 0; }
+.main { flex: 1; margin-inline-start: var(--sidebar-w); display: flex; flex-direction: column; min-width: 0; }
 .topbar { display: flex; align-items: center; gap: 14px; padding: 14px 22px;
   background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
 .topbar h2 { margin: 0; font-size: 18px; flex: 1; }
@@ -199,7 +200,7 @@ table.tbl tr:hover td { background: var(--surface-2); }
   .sidebar { transform: translateX(100%); transition: transform .22s; }
   .app.nav-open .sidebar { transform: translateX(0); }
   .app.nav-open .sidebar-overlay { display: block; }
-  .main { margin-inline-end: 0; }
+  .main { margin-inline-start: 0; }
   .menu-btn { display: block; }
   .form-grid { grid-template-columns: 1fr; }
   .cal-cell { min-height: 68px; }
