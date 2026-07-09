@@ -16,6 +16,10 @@ function buildTransport() {
     port: parseInt(s.smtp_port || '587', 10),
     secure: String(s.smtp_secure) === 'true',
     auth: { user: s.smtp_user, pass: s.smtp_pass },
+    // מגבלות זמן — כדי שכשל יחזור מהר עם שגיאה ברורה במקום להיתקע
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 }
 

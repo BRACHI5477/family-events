@@ -51,6 +51,11 @@ const SettingsModule = {
             </select></div>
             <div class="field full"><label>חתימה</label><textarea data-field="signature">${UI.esc(s.signature || '')}</textarea></div>
           </div>
+          <div class="form-actions" style="margin-top:12px">
+            <button type="button" class="btn" id="s-test-smtp">🔌 בדיקת חיבור SMTP</button>
+            <span class="muted" id="s-smtp-result"></span>
+          </div>
+          <div class="muted" style="margin-top:8px">💡 אם מקבלים "Connection timeout" — הפורט כנראה חסום. נסו פורט <b>2525</b>, או <b>465</b> עם הצפנה SSL.</div>
         </div>
 
         <div class="card" style="margin-bottom:18px">
@@ -100,6 +105,19 @@ const SettingsModule = {
     };
 
     view.querySelector('#s-pass').onclick = () => this.changePassword();
+
+    // בדיקת חיבור SMTP (שומר קודם כדי לבדוק את הערכים הנוכחיים)
+    view.querySelector('#s-test-smtp').onclick = async (e) => {
+      const btn = e.target;
+      const out = view.querySelector('#s-smtp-result');
+      btn.disabled = true; out.textContent = '⏳ בודק חיבור...';
+      try {
+        const r = await API.post('/settings/test-smtp', {});
+        if (r.ok) { out.textContent = '✅ ' + r.message; UI.ok(r.message); }
+        else { out.textContent = '❌ ' + r.error; UI.err(r.error); }
+      } catch (err) { out.textContent = '❌ ' + err.message; UI.err(err.message); }
+      btn.disabled = false;
+    };
 
     // גיבוי — הורדת קובץ
     view.querySelector('#s-export').onclick = async () => {

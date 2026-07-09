@@ -40,6 +40,24 @@ router.put('/', requireRole('admin'), (req, res) => {
   res.json(out);
 });
 
+// בדיקת חיבור SMTP — מאמת מול השרת ומחזיר שגיאה ברורה
+router.post('/test-smtp', requireRole('admin'), async (req, res) => {
+  const { buildTransport } = require('../services/email');
+  const transport = buildTransport();
+  if (!transport) {
+    return res.json({ ok: false, error: 'SMTP לא מוגדר — חסר שרת או שם משתמש' });
+  }
+  try {
+    await transport.verify();
+    res.json({ ok: true, message: 'החיבור ל-SMTP תקין! ✅' });
+  } catch (err) {
+    let hint = '';
+    if (/timeout/i.test(err.message)) hint = ' — נסו פורט 2525 (או 465 עם הצפנה SSL). ייתכן שהפורט חסום.';
+    else if (/auth|credential|535/i.test(err.message)) hint = ' — שם המשתמש או מפתח ה-SMTP שגויים.';
+    res.json({ ok: false, error: err.message + hint });
+  }
+});
+
 // העדפות משתמש (מסך בית וכו') — נשמרות תחת מפתח ייחודי למשתמש
 router.get('/prefs', (req, res) => {
   const row = db.prepare('SELECT value FROM Settings WHERE key = ?').get('prefs_user_' + req.user.userId);

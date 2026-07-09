@@ -165,13 +165,14 @@ const EventsModule = {
   },
 
   async sendNow(id) {
+    UI.toast('⏳ שולח מייל, נא להמתין...');
     try {
       const r = await API.post('/reminders/send-now', { event_id: Number(id) });
-      if (r.status === 'sent') UI.ok('המייל נשלח בהצלחה');
+      if (r.status === 'sent') UI.ok('המייל נשלח בהצלחה אל ' + (r.to || ''));
       else if (r.status === 'preview') this.showPreview(r.html, 'תצוגה מקדימה (SMTP לא מוגדר — לא נשלח מייל אמיתי)');
       else UI.err('כשל שליחה: ' + (r.error || ''));
       this.load();
-    } catch (err) { UI.err(err.message); }
+    } catch (err) { UI.err('שגיאה: ' + err.message); }
   },
 
   showPreview(html, note) {
