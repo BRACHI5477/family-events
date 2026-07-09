@@ -201,10 +201,13 @@ function seedUsersAndFamily() {
     const id = db.prepare('INSERT INTO Families (name, notes) VALUES (?,?)').run('משפחת דמו', 'משפחה לדוגמה').lastInsertRowid;
     demoFamily = { id };
   }
-  if (!db.prepare("SELECT id FROM Users WHERE username = ?").get('brachi5477@gmail.com')) {
+  // מנהל/ת-על ראשי/ת — ניתן להגדרה דרך משתני סביבה (חשוב לעותקים עצמאיים)
+  const superUser = process.env.SUPERADMIN_USERNAME || 'brachi5477@gmail.com';
+  const superPass = process.env.SUPERADMIN_PASSWORD || 'brachi1234';
+  const superName = process.env.SUPERADMIN_NAME || 'מנהל/ת המערכת';
+  if (!db.prepare('SELECT id FROM Users WHERE role = ?').get('superadmin')) {
     db.prepare('INSERT INTO Users (username, password_hash, full_name, email, role, family_id) VALUES (?,?,?,?,?,?)')
-      .run('brachi5477@gmail.com', bcrypt.hashSync(process.env.SUPERADMIN_PASSWORD || 'brachi1234', 10),
-        'ברכי — מנהלת המערכת', 'brachi5477@gmail.com', 'superadmin', null);
+      .run(superUser, bcrypt.hashSync(superPass, 10), superName, superUser, 'superadmin', null);
   }
   // משתמש admin/1234 בוטל — היווה פרצת אבטחה. מנהלת-העל יוצרת משתמשים במסך "משתמשים".
   return demoFamily.id;
