@@ -87,16 +87,21 @@ const SettingsModule = {
       c.onclick = () => c.classList.toggle('on');
     });
 
-    view.querySelector('#s-form').onsubmit = async (e) => {
-      e.preventDefault();
+    // איסוף ושמירת ההגדרות מהטופס (משמש גם את כפתור הבדיקה)
+    this.saveSettings = async () => {
       const data = UI.formData(view.querySelector('#s-form'));
       const mods = [...view.querySelectorAll('#s-modules .chip-toggle.on')].map((c) => c.dataset.mod);
       if (!mods.includes('dashboard')) mods.unshift('dashboard');
       if (!mods.includes('settings')) mods.push('settings');
       data.active_modules = JSON.stringify(mods);
       if (!data.smtp_pass) delete data.smtp_pass; // אל תשלח ריק
+      await API.put('/settings', data);
+    };
+
+    view.querySelector('#s-form').onsubmit = async (e) => {
+      e.preventDefault();
       try {
-        await API.put('/settings', data);
+        await this.saveSettings();
         UI.ok('ההגדרות נשמרו');
         await App.loadSettings();
         App.applyTheme();
@@ -106,12 +111,13 @@ const SettingsModule = {
 
     view.querySelector('#s-pass').onclick = () => this.changePassword();
 
-    // בדיקת חיבור SMTP (שומר קודם כדי לבדוק את הערכים הנוכחיים)
+    // בדיקת חיבור SMTP — שומר קודם את מה שבטופס, ואז בודק
     view.querySelector('#s-test-smtp').onclick = async (e) => {
       const btn = e.target;
       const out = view.querySelector('#s-smtp-result');
-      btn.disabled = true; out.textContent = '⏳ בודק חיבור...';
+      btn.disabled = true; out.textContent = '⏳ שומר ובודק חיבור...';
       try {
+        await this.saveSettings();               // שמירה אוטומטית לפני הבדיקה
         const r = await API.post('/settings/test-smtp', {});
         if (r.ok) { out.textContent = '✅ ' + r.message; UI.ok(r.message); }
         else { out.textContent = '❌ ' + r.error; UI.err(r.error); }

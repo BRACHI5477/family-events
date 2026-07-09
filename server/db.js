@@ -297,9 +297,118 @@ function seed() {
     }
   }
 
+  // תבנית מייל לכל סוג אירוע (idempotent — נוצרת רק אם חסרה)
+  ensureTemplatesForAllTypes();
+
   // Backfill — כל בן משפחה/אירוע ללא שיוך → המשפחה הראשונה
   db.prepare('UPDATE FamilyMembers SET family_id = ? WHERE family_id IS NULL').run(demoFamilyId);
   db.prepare('UPDATE Events SET family_id = ? WHERE family_id IS NULL').run(demoFamilyId);
+}
+
+// ---------------------------------------------------------------------------
+// תבניות מייל לכל סוגי האירועים
+// placeholders זמינים: {{name}} {{title}} {{age}} {{date}} {{hebrew_date}}
+// ---------------------------------------------------------------------------
+const SIG = 'בברכה,\nהמשפחה 💛';
+const TEMPLATE_DEFS = [
+  {
+    type: 'בר מצווה', name: 'תבנית בר מצווה', accent: '#3b82f6',
+    title: 'מזל טוב לבר המצווה! 🕎',
+    body: '<p style="font-size:19px"><b>{{name}}</b> נכנס היום לעול תורה ומצוות!</p>'
+      + '<p>בגיל <b>{{age}}</b>, בתאריך {{hebrew_date}}.</p>'
+      + '<p>שיזכה לעלות במעלות התורה והיראה, ולהיות מקור נחת למשפחה 🕎📖</p>',
+  },
+  {
+    type: 'בת מצווה', name: 'תבנית בת מצווה', accent: '#ec4899',
+    title: 'מזל טוב לבת המצווה! 👑',
+    body: '<p style="font-size:19px"><b>{{name}}</b> חוגגת היום בת מצווה!</p>'
+      + '<p>בגיל <b>{{age}}</b>, בתאריך {{hebrew_date}}.</p>'
+      + '<p>שתזכה לגדול בדרך התורה, בצניעות ובשמחה 👑✨</p>',
+  },
+  {
+    type: 'חתונה', name: 'תבנית חתונה', accent: '#e11d48',
+    title: 'מזל טוב לחתונה! 💒',
+    body: '<p style="font-size:19px">מזל טוב ל<b>{{name}}</b> לרגל החתונה!</p>'
+      + '<p>בתאריך {{date}} · {{hebrew_date}}</p>'
+      + '<p>שתזכו לבנות בית נאמן בישראל, מלא אהבה ושמחה 💒💍</p>',
+  },
+  {
+    type: 'וורט', name: 'תבנית וורט', accent: '#f59e0b',
+    title: 'מזל טוב לוורט! 🥂',
+    body: '<p style="font-size:19px">מזל טוב ל<b>{{name}}</b> לרגל הוורט!</p>'
+      + '<p>בתאריך {{date}} · {{hebrew_date}}</p>'
+      + '<p>בשעה טובה ומוצלחת — שנזכה לשמוח יחד 🥂🎊</p>',
+  },
+  {
+    type: 'אירוסין', name: 'תבנית אירוסין', accent: '#d946ef',
+    title: 'מזל טוב לאירוסין! 💐',
+    body: '<p style="font-size:19px">מזל טוב ל<b>{{name}}</b> לרגל האירוסין!</p>'
+      + '<p>בתאריך {{date}} · {{hebrew_date}}</p>'
+      + '<p>בשעה טובה ומוצלחת, שתעלה הדרך לחופה בשמחה 💐💞</p>',
+  },
+  {
+    type: 'ברית מילה', name: 'תבנית ברית מילה', accent: '#0ea5e9',
+    title: 'מזל טוב לברית המילה! 👶',
+    body: '<p style="font-size:19px">מזל טוב למשפחת <b>{{name}}</b> לרגל הברית!</p>'
+      + '<p>בתאריך {{date}} · {{hebrew_date}}</p>'
+      + '<p>כשם שנכנס לברית — כן ייכנס לתורה, לחופה ולמעשים טובים 👶🍼</p>',
+  },
+  {
+    type: 'פדיון הבן', name: 'תבנית פדיון הבן', accent: '#14b8a6',
+    title: 'מזל טוב לפדיון הבן! 📜',
+    body: '<p style="font-size:19px">מזל טוב ל<b>{{name}}</b> לרגל פדיון הבן!</p>'
+      + '<p>בתאריך {{date}} · {{hebrew_date}}</p>'
+      + '<p>בשעה טובה ומוצלחת 📜✨</p>',
+  },
+  {
+    type: 'יום זיכרון (יארצייט)', name: 'תבנית יום זיכרון', accent: '#6b7280',
+    title: 'יום הזיכרון (יארצייט) 🕯️',
+    body: '<p style="font-size:19px">היום יום הזיכרון של <b>{{name}}</b> ז״ל</p>'
+      + '<p>{{hebrew_date}} · {{date}}</p>'
+      + '<p>נר נשמה, אמירת קדיש ולימוד לעילוי הנשמה.</p>'
+      + '<p style="color:#6b7280">תהא נשמתו/ה צרורה בצרור החיים 🕯️</p>',
+  },
+  {
+    type: 'חג', name: 'תבנית חג', accent: '#8b5cf6',
+    title: 'חג שמח! ✡️',
+    body: '<p style="font-size:19px">מתקרב החג: <b>{{title}}</b></p>'
+      + '<p>בתאריך {{date}} · {{hebrew_date}}</p>'
+      + '<p>חג שמח וכשר לכל המשפחה! ✡️🎊</p>',
+  },
+  {
+    type: 'יום הולדת', name: 'תבנית יום הולדת', accent: '#ff7a59',
+    title: 'מזל טוב ליום ההולדת! 🎂',
+    body: '<p>{{name}} חוגג/ת היום יום הולדת {{age}}!</p><p>שנה טובה ומאושרת 🎉</p>',
+  },
+  {
+    type: 'יום נישואין', name: 'תבנית יום נישואין', accent: '#c86fe0',
+    title: 'מזל טוב ליום הנישואין! 💍',
+    body: '<p>{{name}} חוגגים היום {{age}} שנות נישואין!</p><p>אהבה ואושר תמיד 💕</p>',
+  },
+  {
+    type: 'אירוע משפחתי', name: 'תבנית אירוע', accent: '#4f8cff',
+    title: 'תזכורת לאירוע 🎉',
+    body: '<p>מזכירים על האירוע: {{title}}</p><p>בתאריך {{date}} · {{hebrew_date}}</p>',
+  },
+];
+
+function ensureTemplatesForAllTypes() {
+  const findType = db.prepare('SELECT id, default_template_id FROM EventTypes WHERE name = ?');
+  const findTpl = db.prepare('SELECT id FROM EmailTemplates WHERE name = ?');
+  const insTpl = db.prepare(`INSERT INTO EmailTemplates
+    (name, type_id, title, body_html, accent_color, signature, active) VALUES (?,?,?,?,?,?,1)`);
+  const setDefault = db.prepare('UPDATE EventTypes SET default_template_id = ? WHERE id = ?');
+
+  for (const def of TEMPLATE_DEFS) {
+    const type = findType.get(def.type);
+    if (!type) continue;                       // סוג לא קיים — דלג
+    let tpl = findTpl.get(def.name);
+    if (!tpl) {
+      const id = insTpl.run(def.name, type.id, def.title, def.body, def.accent, SIG).lastInsertRowid;
+      tpl = { id };
+    }
+    if (!type.default_template_id) setDefault.run(tpl.id, type.id);
+  }
 }
 
 seed();
