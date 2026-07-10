@@ -1,0 +1,136 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8">
+<title>מדריך בעלים — הקמת לקוח חדש</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Arial Hebrew", Arial, sans-serif;
+    color: #1e2430; line-height: 1.75; font-size: 12pt; margin: 0; }
+  .cover { text-align: center; padding: 50px 0 34px; border-bottom: 4px solid #a0703a; margin-bottom: 26px; }
+  .cover .emoji { font-size: 58pt; line-height: 1; }
+  .cover h1 { font-size: 27pt; margin: 12px 0 6px; }
+  .cover .sub { font-size: 13.5pt; color: #6b7280; }
+  .private { background:#fdeef0;border:1px solid #f4b6bf;border-radius:10px;
+             padding:12px 16px;margin:18px auto 0;max-width:80%;font-size:11.5pt;color:#8a2b34; }
+  h2 { font-size: 16.5pt; color: #a0703a; border-bottom: 2px solid #eadfce;
+       padding-bottom: 6px; margin: 28px 0 12px; page-break-after: avoid; }
+  h3 { font-size: 13pt; margin: 18px 0 8px; page-break-after: avoid; }
+  p, li { font-size: 12pt; }
+  ol, ul { padding-inline-start: 22px; }
+  li { margin: 5px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; page-break-inside: avoid; }
+  th, td { border: 1px solid #d7dee9; padding: 8px 10px; text-align: right; font-size: 11pt; vertical-align: top; }
+  th { background: #f7f1e8; font-weight: 700; }
+  code { background:#f2f4f8;border:1px solid #e0e5ee;border-radius:4px;padding:1px 6px;
+         font-family:Consolas,monospace;font-size:10.5pt;direction:ltr;display:inline-block;unicode-bidi:embed; }
+  .box { border-radius: 10px; padding: 12px 16px; margin: 14px 0; page-break-inside: avoid; }
+  .tip  { background: #eefaf1; border: 1px solid #a8e0bb; }
+  .warn { background: #fff7e6; border: 1px solid #ffd88a; }
+  .crit { background: #fdeef0; border: 1px solid #f4b6bf; }
+  .step { background: #a0703a; color: #fff; border-radius: 50%; width: 28px; height: 28px;
+          display: inline-grid; place-items: center; font-weight: 700; margin-inline-end: 8px; font-size: 12pt; }
+  .msg { background:#f6f8fc;border:1px dashed #b9c4d6;border-radius:10px;padding:14px 18px;
+         margin:10px 0; line-height:2; }
+  .page-break { page-break-before: always; }
+  footer { margin-top: 34px; border-top: 1px solid #e3e8f0; padding-top: 10px;
+           text-align: center; color: #8b93a3; font-size: 10pt; }
+  @media print { .no-print { display: none; } }
+  .no-print { background:#a0703a;color:#fff;padding:14px;border-radius:10px;text-align:center;margin-bottom:20px }
+</style>
+</head>
+<body>
+
+<div class="no-print"><b>להפקת PDF:</b> <code>Ctrl + P</code> ← "שמירה כ-PDF" ← שמירה.</div>
+
+<div class="cover">
+  <div class="emoji">🔑</div>
+  <h1>מדריך בעלים — הקמת לקוח חדש</h1>
+  <div class="sub">יומן אירועים משפחתי</div>
+  <div class="private">
+    ⚠️ <b>מסמך פרטי — לב.ג. בלבד.</b> אין לשלוח ללקוחות!
+  </div>
+</div>
+
+<h2>הרעיון בקצרה</h2>
+<p>לכל לקוח את מקימה מערכת <b>עצמאית ונפרדת</b> (כ-20 דקות עבודה). הלקוח מקבל בסוף
+<b>רק 3 דברים</b>: קישור לאתר, שם משתמש וסיסמה. הוא לא נוגע בקוד, לא רואה GitHub,
+ולא רואה אף לקוח אחר. הנתונים שלו במסד הנפרד שלו — ואת לא רואה אותם.</p>
+
+<h2>הכנה חד-פעמית</h2>
+<div class="crit box">
+  <b>הפכי את הריפו ב-GitHub לפרטי:</b> הריפו ← <b>Settings</b> ← למטה <b>Danger Zone</b>
+  ← <b>Change visibility</b> ← <b>Make private</b>.<br>
+  זה מונע מאנשים אחרים לראות או להעתיק את הקוד. אתרים שכבר רצים לא יושפעו.
+</div>
+
+<h2>לכל לקוח חדש — השלבים</h2>
+
+<h3><span class="step">1</span>מסד נתונים (Neon) · 3 דק'</h3>
+<ol>
+  <li><code>console.neon.tech</code> ← <b>New Project</b></li>
+  <li>שם הפרויקט = שם הלקוח (למשל <code>cohen-family</code>)</li>
+  <li><b>Connect</b> ← <b>Show password</b> ← <b>Copy</b> את מחרוזת ה-<code>DATABASE_URL</code></li>
+</ol>
+
+<h3><span class="step">2</span>שליחת מיילים (Brevo)</h3>
+<p>אפשר להשתמש <b>באותו חשבון Brevo</b> שלך לכל הלקוחות (300 מיילים ביום, משותפים).
+שמרי בהישג יד את ה-<code>SMTP_USER</code> (ה-Login) ואת ה-<code>SMTP_PASS</code> (ה-key).</p>
+
+<h3><span class="step">3</span>הפעלת הסקריפט</h3>
+<p>מתוך תיקיית הפרויקט, הריצי:</p>
+<p><code>npm run new-client</code></p>
+<p>ענו על השאלות (שם הלקוח, המייל שלו, סיסמה, וה-<code>DATABASE_URL</code>).
+הסקריפט <b>מדפיס טבלה מוכנה</b> של כל משתני הסביבה — פשוט להעתיק ל-Render.</p>
+
+<div class="page-break"></div>
+
+<h3><span class="step">4</span>פריסה (Render) · 5 דק'</h3>
+<ol>
+  <li><code>render.com</code> ← <b>New</b> ← <b>Web Service</b></li>
+  <li>בחרי את הריפו <code>family-events</code> (שלך)</li>
+  <li><b>Name</b> = שם הלקוח (זה קובע את הכתובת: <code>שם-הלקוח.onrender.com</code>)</li>
+  <li><b>Instance Type:</b> Free · <b>Language:</b> Docker</li>
+  <li><b>Environment Variables</b> ← הדביקי את מה שהסקריפט הדפיס</li>
+  <li><b>Create Web Service</b> ← אחרי ~4 דקות יש כתובת</li>
+</ol>
+<div class="warn box">
+  <b>בדיקה:</b> פתחי <code>https://שם-הלקוח.onrender.com/api/health</code> ←
+  צריך להופיע <code>"cloud_db":true</code>. אם <code>false</code> — ה-<code>DATABASE_URL</code>
+  לא נקלט, והנתונים יימחקו!
+</div>
+
+<h3><span class="step">5</span>פינג — שהשרת לא יירדם · 2 דק'</h3>
+<ol>
+  <li><code>console.cron-job.org</code> ← <b>Create Cronjob</b></li>
+  <li><b>URL:</b> <code>https://שם-הלקוח.onrender.com/api/health</code></li>
+  <li><b>Every 10 minutes</b> ← <b>SAVE</b></li>
+</ol>
+
+<h2>מה מוסרים ללקוח</h2>
+<p>שלחי לו את <b>מדריך-למשתמש.pdf</b> + ההודעה הזו:</p>
+<div class="msg">
+  שלום! המערכת שלך מוכנה 🎉<br>
+  כתובת: <code>https://שם-הלקוח.onrender.com</code><br>
+  שם משתמש: <b>&lt;המייל שלו&gt;</b><br>
+  סיסמה: <b>&lt;הסיסמה שקבעת&gt;</b><br>
+  מומלץ להחליף סיסמה אחרי הכניסה: הגדרות ← החלפת סיסמה.
+</div>
+<p>זהו. הלקוח לא מקבל שום דבר אחר.</p>
+
+<h2>תחזוקה שוטפת</h2>
+<table>
+  <tr><th style="width:36%">משימה</th><th>איך</th></tr>
+  <tr><td>עדכון לכל הלקוחות</td><td>דוחפים שינוי ל-GitHub → כל אתרי Render מתעדכנים אוטומטית</td></tr>
+  <tr><td>גיבוי</td><td>כל לקוח מייצא בעצמו (הגדרות ← גיבוי). Neon שומר גיבויים אוטומטית</td></tr>
+  <tr><td>לקוח הפסיק לשלם</td><td>ב-Render משהים או מוחקים את השירות שלו</td></tr>
+</table>
+
+<footer>
+  🔑 מדריך בעלים · יומן אירועים משפחתי<br>
+  © כל הזכויות שמורות לב.ג. · autogold100@gmail.com
+</footer>
+
+</body>
+</html>
