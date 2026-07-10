@@ -19,6 +19,9 @@ function enrich(m) {
     ...m,
     hebrew_birth_calc: m.gregorian_birth ? gregorianToHebrewText(m.gregorian_birth) : '',
     current_age: currentGregorianAge(m.gregorian_birth),
+    image_url: m.image_id
+      ? (db.prepare('SELECT data_url FROM Images WHERE id = ?').get(m.image_id) || {}).data_url || null
+      : null,
   };
 }
 

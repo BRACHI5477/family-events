@@ -29,10 +29,13 @@ const MembersModule = {
     this.host.innerHTML = `
       <table class="tbl">
         <thead><tr>
-          <th>שם</th><th>כינוי</th><th>קשר</th><th>תאריך לידה</th><th>עברי</th><th>גיל</th><th>טלפון</th><th>דוא"ל</th><th></th>
+          <th></th><th>שם</th><th>כינוי</th><th>קשר</th><th>תאריך לידה</th><th>עברי</th><th>גיל</th><th>טלפון</th><th>דוא"ל</th><th></th>
         </tr></thead>
         <tbody>${rows.map((m) => `
           <tr>
+            <td>${m.image_url
+              ? `<img src="${m.image_url}" class="avatar" style="object-fit:cover">`
+              : `<div class="avatar">${UI.esc((m.first_name || '?')[0])}</div>`}</td>
             <td><b>${UI.esc(m.first_name)} ${UI.esc(m.last_name || '')}</b>${m.archived ? ' <span class="muted">(ארכיון)</span>' : ''}</td>
             <td>${UI.esc(m.nickname || '')}</td>
             <td>${UI.esc(m.relation || '')}</td>
@@ -76,6 +79,13 @@ const MembersModule = {
           <div class="field"><label>טלפון</label><input data-field="phone" value="${f('phone')}"></div>
           <div class="field"><label>דוא"ל</label><input type="email" data-field="email" value="${f('email')}"></div>
           <div class="field full"><label>כתובת</label><input data-field="address" value="${f('address')}"></div>
+          <div class="field full"><label>🖼️ תמונה (תופיע במיילי התזכורת)</label>
+            <input type="hidden" data-field="image_id" id="m-imgid" value="${m.image_id || ''}">
+            <div style="display:flex;gap:10px;align-items:center">
+              <button type="button" class="btn" id="m-img-upload">📷 בחירת תמונה</button>
+              <div id="m-img-preview"></div>
+            </div>
+          </div>
           <div class="field full"><label>הערות</label><textarea data-field="notes">${f('notes')}</textarea></div>
         </div>
         <div class="form-actions">
@@ -84,6 +94,25 @@ const MembersModule = {
         </div>
       </form>`;
     const modal = UI.modal(m.id ? 'עריכת בן משפחה' : 'הוספת בן משפחה', body);
+
+    // תמונת בן המשפחה
+    const imgId = modal.querySelector('#m-imgid');
+    const imgPrev = modal.querySelector('#m-img-preview');
+    const renderImg = (url) => {
+      imgPrev.innerHTML = url
+        ? `<img src="${url}" style="height:70px;width:70px;object-fit:cover;border-radius:50%;border:2px solid var(--primary)">
+           <button type="button" class="btn btn-sm btn-danger" id="m-img-clear" style="margin-inline-start:8px">הסרה</button>`
+        : '<span class="muted">לא נבחרה תמונה</span>';
+      const clr = imgPrev.querySelector('#m-img-clear');
+      if (clr) clr.onclick = () => { imgId.value = ''; renderImg(null); };
+    };
+    renderImg(m.image_url || null);
+    modal.querySelector('#m-img-upload').onclick = async () => {
+      UI.toast('⏳ מעלה תמונה...');
+      const img = await UI.pickImage({ maxSize: 500 });
+      if (img) { imgId.value = img.id; renderImg(img.data_url); UI.ok('התמונה נבחרה'); }
+    };
+
     modal.querySelector('#m-cancel').onclick = () => UI.closeModal();
     modal.querySelector('#m-form').onsubmit = async (e) => {
       e.preventDefault();
