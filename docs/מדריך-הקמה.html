@@ -1,0 +1,218 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8">
+<title>מדריך הקמה — יומן אירועים משפחתי</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Arial Hebrew", Arial, sans-serif;
+    color: #1e2430; line-height: 1.75; font-size: 12pt; margin: 0;
+  }
+  .cover { text-align: center; padding: 60px 0 40px; border-bottom: 4px solid #4f8cff; margin-bottom: 28px; }
+  .cover .emoji { font-size: 64pt; line-height: 1; }
+  .cover h1 { font-size: 30pt; margin: 14px 0 6px; color: #1e2430; }
+  .cover .sub { font-size: 14pt; color: #6b7280; }
+  .badges { margin-top: 18px; }
+  .badge { display: inline-block; background: #eef4ff; color: #2c5fd0; border: 1px solid #cfe0ff;
+           border-radius: 20px; padding: 5px 16px; margin: 3px; font-size: 11pt; }
+
+  h2 { font-size: 17pt; color: #2c5fd0; border-bottom: 2px solid #e3e8f0;
+       padding-bottom: 6px; margin: 30px 0 14px; page-break-after: avoid; }
+  h3 { font-size: 13.5pt; margin: 20px 0 8px; page-break-after: avoid; }
+  p, li { font-size: 12pt; }
+  ol, ul { padding-inline-start: 22px; }
+  li { margin: 5px 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; page-break-inside: avoid; }
+  th, td { border: 1px solid #d7dee9; padding: 8px 10px; text-align: right; font-size: 11pt; vertical-align: top; }
+  th { background: #f2f6fc; font-weight: 700; }
+  code { background: #f2f4f8; border: 1px solid #e0e5ee; border-radius: 4px;
+         padding: 1px 6px; font-family: Consolas, monospace; font-size: 10.5pt;
+         direction: ltr; display: inline-block; unicode-bidi: embed; }
+
+  .box { border-radius: 10px; padding: 12px 16px; margin: 14px 0; page-break-inside: avoid; }
+  .warn { background: #fff7e6; border: 1px solid #ffd88a; }
+  .tip  { background: #eefaf1; border: 1px solid #a8e0bb; }
+  .crit { background: #fdeef0; border: 1px solid #f4b6bf; }
+
+  .step { background: #4f8cff; color: #fff; border-radius: 50%; width: 28px; height: 28px;
+          display: inline-grid; place-items: center; font-weight: 700; margin-inline-end: 8px; font-size: 12pt; }
+  .page-break { page-break-before: always; }
+  footer { margin-top: 36px; border-top: 1px solid #e3e8f0; padding-top: 10px;
+           text-align: center; color: #8b93a3; font-size: 10pt; }
+  @media print { .no-print { display: none; } }
+  .no-print { background:#4f8cff;color:#fff;padding:14px;border-radius:10px;text-align:center;margin-bottom:20px }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <b>להפקת PDF:</b> לחצו <code>Ctrl + P</code> ← בשדה "יעד" בחרו <b>"שמירה כ-PDF"</b> ← שמירה.
+</div>
+
+<div class="cover">
+  <div class="emoji">📅</div>
+  <h1>יומן אירועים משפחתי</h1>
+  <div class="sub">מדריך להקמת מערכת עצמאית משלך</div>
+  <div class="badges">
+    <span class="badge">חינם לחלוטין</span>
+    <span class="badge">כ-30 דקות</span>
+    <span class="badge">ללא ידע טכני</span>
+  </div>
+</div>
+
+<h2>מה תקבלו</h2>
+<p>מערכת אינטרנטית <b>עצמאית לחלוטין</b> — עם הנתונים שלכם, המנהל שלכם והכתובת שלכם.
+אף אחד אחר לא רואה את הנתונים, לא יכול לשנות או למחוק אותם, ושום עדכון אצל מישהו אחר לא ישפיע עליכם.</p>
+
+<ul>
+  <li>🗓️ לוח שנה עברי (בגימטריה) ולועזי</li>
+  <li>👥 בני משפחה, אירועים, וחישוב גיל אוטומטי (בר מצווה = 13)</li>
+  <li>🔔 תזכורות מייל אוטומטיות — כולל מיקום, הערות ותמונה</li>
+  <li>📧 12 תבניות מייל מעוצבות (יום הולדת, בר/בת מצווה, חתונה, ברית, יארצייט ועוד)</li>
+  <li>🏘️ ניהול כמה משפחות במקביל</li>
+  <li>🔐 משתמשים והרשאות (מנהל / עורך / צפייה בלבד)</li>
+  <li>💾 גיבוי, ייצוא נתונים, ואיפוס סיסמה במייל</li>
+</ul>
+
+<h2>מה נקים</h2>
+<table>
+  <tr><th style="width:22%">שירות</th><th>תפקיד</th><th style="width:18%">עלות</th></tr>
+  <tr><td><b>GitHub</b></td><td>מאחסן את הקוד</td><td>חינם</td></tr>
+  <tr><td><b>Neon</b></td><td>שומר את הנתונים לנצח</td><td>חינם</td></tr>
+  <tr><td><b>Brevo</b></td><td>שולח את מיילי התזכורות</td><td>חינם (300/יום)</td></tr>
+  <tr><td><b>Render</b></td><td>מריץ את האתר ונותן כתובת</td><td>חינם</td></tr>
+  <tr><td><b>cron-job.org</b></td><td>מונע מהשרת להירדם</td><td>חינם</td></tr>
+</table>
+
+<div class="tip box">
+  <b>💡 טיפ:</b> פִּתחו כל שירות בלשונית נפרדת בדפדפן. תצטרכו להעתיק ערכים בין השירותים,
+  ונוח לעבור ביניהם. מומלץ לפתוח גם קובץ "פנקס רשימות" לשמירת הסיסמאות והמפתחות.
+</div>
+
+<div class="page-break"></div>
+
+<h2><span class="step">1</span>העתקת הקוד — GitHub</h2>
+<ol>
+  <li>פִּתחו חשבון חינם ב-<code>github.com</code></li>
+  <li>היכנסו לכתובת: <code>github.com/BRACHI5477/family-events</code></li>
+  <li>לחצו על כפתור <b>Fork</b> (למעלה מימין) ← <b>Create fork</b></li>
+</ol>
+<p>זה יוצר עותק פרטי של הקוד בחשבון שלכם.</p>
+
+<h2><span class="step">2</span>מסד הנתונים — Neon</h2>
+<div class="crit box">
+  <b>⚠️ זה השלב הקריטי ביותר.</b> בלעדיו כל הנתונים שלכם יימחקו כל כמה שעות!
+</div>
+<ol>
+  <li>היכנסו ל-<code>console.neon.tech/signup</code> ← <b>Continue with GitHub</b></li>
+  <li>צרו פרויקט (אפשר להשאיר את שם ברירת המחדל)</li>
+  <li>במסך הפרויקט לחצו <b>Connect</b> ← <b>Show password</b> ← <b>Copy snippet</b></li>
+  <li>שמרו את המחרוזת בפנקס הרשימות. היא נראית כך:</li>
+</ol>
+<p><code>postgresql://neondb_owner:סיסמה@ep-xxxx.aws.neon.tech/neondb?sslmode=require</code></p>
+
+<h2><span class="step">3</span>שליחת מיילים — Brevo</h2>
+<ol>
+  <li>הירשמו ב-<code>brevo.com/free-account</code></li>
+  <li>לכו ל-<b>SMTP &amp; API</b> ← צרו <b>SMTP key</b> ← <b>שמרו אותו מיד</b> (מוצג פעם אחת בלבד!)</li>
+  <li>באותו מסך רשמו לעצמכם את ה-<b>Login</b> (משהו כמו <code>b1xxxxx@smtp-brevo.com</code>)</li>
+  <li>לכו ל-<b>Senders</b> ← הוסיפו את המייל שלכם כשולח ← אשרו במייל האימות שיישלח אליכם</li>
+</ol>
+
+<div class="page-break"></div>
+
+<h2><span class="step">4</span>פריסת האתר — Render</h2>
+<ol>
+  <li>היכנסו ל-<code>render.com</code> ← <b>Get Started</b> ← <b>Sign in with GitHub</b></li>
+  <li><b>New</b> ← <b>Web Service</b> ← בחרו את הריפו <code>family-events</code> שהעתקתם</li>
+  <li>ודאו: <b>Language</b> = <code>Docker</code> · <b>Branch</b> = <code>main</code> · <b>Instance Type</b> = <code>Free</code></li>
+  <li>גללו ל-<b>Environment Variables</b> והוסיפו את 10 השורות מהטבלה שלמטה</li>
+  <li>לחצו <b>Create Web Service</b>. אחרי כ-4 דקות תקבלו כתובת כמו
+      <code>https://השם-שלכם.onrender.com</code></li>
+</ol>
+
+<h3>משתני הסביבה</h3>
+<p>בכל שורה יש שתי תיבות: <b>שמאלית = השם</b> (באנגלית, בדיוק כפי שכתוב), <b>ימנית = הערך</b>.</p>
+<table>
+  <tr><th style="width:32%">השם (Key)</th><th style="width:36%">הערך (Value)</th><th>מה זה</th></tr>
+  <tr><td><code>DATABASE_URL</code></td><td>המחרוזת מ-Neon</td><td>🔑 שומר את הנתונים</td></tr>
+  <tr><td><code>SUPERADMIN_USERNAME</code></td><td>המייל שלכם</td><td>שם המשתמש שלכם</td></tr>
+  <tr><td><code>SUPERADMIN_PASSWORD</code></td><td>סיסמה שתבחרו</td><td>הסיסמה שלכם</td></tr>
+  <tr><td><code>SUPERADMIN_NAME</code></td><td>השם שלכם</td><td>יוצג בממשק</td></tr>
+  <tr><td><code>SMTP_HOST</code></td><td><code>smtp-relay.brevo.com</code></td><td>שרת המייל</td></tr>
+  <tr><td><code>SMTP_PORT</code></td><td><code>2525</code></td><td>⚠️ חייב 2525 (587 חסום)</td></tr>
+  <tr><td><code>SMTP_USER</code></td><td>ה-Login מ-Brevo</td><td>משתמש לשליחה</td></tr>
+  <tr><td><code>SMTP_PASS</code></td><td>ה-SMTP key מ-Brevo</td><td>סיסמת השליחה</td></tr>
+  <tr><td><code>SENDER_EMAIL</code></td><td>המייל המאומת שלכם</td><td>ממי נשלח</td></tr>
+  <tr><td><code>SENDER_NAME</code></td><td>יומן אירועים משפחתי</td><td>שם השולח</td></tr>
+</table>
+
+<div class="warn box">
+  <b>⚠️ טעות נפוצה:</b> למלא רק את התיבה הימנית ולהשאיר את השמאלית ריקה.
+  <b>שתי התיבות חייבות להיות מלאות בכל שורה.</b>
+</div>
+
+<h2><span class="step">5</span>בדיקה שהכל תקין</h2>
+<ol>
+  <li>היכנסו לכתובת שקיבלתם, עם שם המשתמש והסיסמה שהגדרתם</li>
+  <li><b>הגדרות</b> ← <b>🔌 בדיקת חיבור SMTP</b> ← אמור להופיע <i>"החיבור ל-SMTP תקין!"</i></li>
+  <li>פִּתחו בדפדפן: <code>https://הכתובת-שלכם.onrender.com/api/health</code></li>
+</ol>
+<p>צריך להופיע <code>"cloud_db":true</code>.</p>
+<div class="crit box">
+  אם מופיע <code>"cloud_db":false</code> — ה-<code>DATABASE_URL</code> לא נקלט,
+  <b>והנתונים שלכם יימחקו!</b> חזרו לשלב 4 ובדקו את השורה הזו.
+</div>
+
+<div class="page-break"></div>
+
+<h2><span class="step">6</span>שהשרת לא יירדם (מומלץ)</h2>
+<p>בתוכנית החינמית השרת נרדם אחרי חוסר פעילות, ואז תזכורות עלולות להישלח באיחור.</p>
+<ol>
+  <li>הירשמו ב-<code>cron-job.org</code></li>
+  <li>צרו Cronjob חדש:
+    <ul>
+      <li><b>URL:</b> <code>https://הכתובת-שלכם.onrender.com/api/health</code></li>
+      <li><b>Schedule:</b> כל 10 דקות</li>
+    </ul>
+  </li>
+</ol>
+<div class="tip box">
+  <b>💡 שימו לב:</b> הפינג <b>אינו שולח מיילים</b>. הוא רק "נוגע" בשרת כדי שיישאר ער.
+</div>
+
+<h2>שאלות נפוצות</h2>
+
+<h3>האם מישהו אחר יכול לראות או למחוק את הנתונים שלי?</h3>
+<p>לא. מסד הנתונים (Neon) והשרת (Render) הם שלכם בלבד.</p>
+
+<h3>מה אם המערכת המקורית תתעדכן?</h3>
+<p>לא ישפיע עליכם — אתם על עותק (fork) משלכם.</p>
+
+<h3>האתר איטי בכניסה הראשונה?</h3>
+<p>בתוכנית החינמית השרת "מתעורר" (כ-40 שניות). שלב 6 פותר זאת.</p>
+
+<h3>שכחתי את הסיסמה</h3>
+<p>לחצו "שכחתי סיסמה" במסך הכניסה. יישלח מייל עם קישור לבחירת סיסמה חדשה.
+<b>כל הנתונים נשמרים</b> — רק הסיסמה משתנה.</p>
+
+<h3>נטפרי חוסם את הכתובת</h3>
+<p>נפוץ עם דומיינים חדשים. שלחו לנטפרי בקשה לפתיחת הכתובת.</p>
+
+<h3>איך אני נותן גישה לבני משפחה?</h3>
+<p>מסך <b>משתמשים</b> ← הוספת משתמש ← בחרו הרשאה ← לחצו <b>📧</b> כדי לשלוח לו
+במייל קישור התחברות עם הפרטים.</p>
+
+<h3>איך שומרים גיבוי?</h3>
+<p><b>הגדרות</b> ← <b>גיבוי ושחזור</b> ← <b>ייצוא גיבוי</b>. שומר קובץ עם כל הנתונים.</p>
+
+<footer>
+  יומן אירועים משפחתי · מדריך הקמה<br>
+  הקוד: github.com/BRACHI5477/family-events
+</footer>
+
+</body>
+</html>
