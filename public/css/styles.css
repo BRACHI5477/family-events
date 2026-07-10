@@ -11,7 +11,8 @@
   --shadow: 0 6px 24px rgba(20, 30, 60, .08);
   --radius: 14px;
   --sidebar-w: 240px;
-  font-family: 'Segoe UI', 'Assistant', Arial, sans-serif;
+  --font: 'Segoe UI', 'Assistant', Arial, sans-serif;
+  font-family: var(--font);
 }
 :root[data-theme="dark"] {
   --bg: #0f1420;
@@ -25,7 +26,16 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; }
-body { background: var(--bg); color: var(--text); font-size: 15px; }
+body { background: var(--bg); color: var(--text); font-size: 15px; font-family: var(--font); }
+/* רקע מותאם (תמונה או מעבר צבע) */
+body.custom-bg { background: var(--bg-custom) fixed; background-size: cover; }
+
+/* כפתור "עין" להצגת סיסמה */
+.pw-wrap { position: relative; display: flex; align-items: center; }
+.pw-wrap input { flex: 1; padding-inline-start: 40px !important; }
+.pw-eye { position: absolute; inset-inline-start: 6px; background: none; border: none;
+  font-size: 16px; line-height: 1; padding: 4px 6px; border-radius: 6px; opacity: .7; }
+.pw-eye:hover { opacity: 1; background: var(--surface); }
 .hidden { display: none !important; }
 a { color: var(--primary); text-decoration: none; }
 button { font-family: inherit; cursor: pointer; }

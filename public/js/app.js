@@ -24,6 +24,7 @@ const App = {
   async init() {
     this.bindLogin();
     this.bindChrome();
+    UI.attachPasswordToggles(document.getElementById('login-screen'));
     // קישור איפוס סיסמה מהמייל: #/reset?token=...
     const m = location.hash.match(/^#\/reset\?token=([A-Za-z0-9]+)/);
     if (m) { this.showLogin(); this.showResetForm(m[1]); return; }
@@ -152,11 +153,32 @@ const App = {
 
   applyTheme() {
     const saved = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', saved);
-    document.getElementById('theme-toggle').textContent = saved === 'dark' ? '☀️' : '🌙';
-    // צבעי מותג מההגדרות
-    if (this.settings.primary_color) document.documentElement.style.setProperty('--primary', this.settings.primary_color);
-    if (this.settings.accent_color) document.documentElement.style.setProperty('--accent', this.settings.accent_color);
+    const dark = saved === 'dark';
+    const root = document.documentElement;
+    root.setAttribute('data-theme', saved);
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) toggle.textContent = dark ? '☀️' : '🌙';
+
+    const s = this.settings || {};
+    // צבעי מותג + גופן — חלים תמיד
+    if (s.primary_color) root.style.setProperty('--primary', s.primary_color);
+    if (s.accent_color) root.style.setProperty('--accent', s.accent_color);
+    root.style.setProperty('--font', s.font_family || "'Segoe UI', 'Assistant', Arial, sans-serif");
+
+    // רקע וצבע טקסט — רק במצב בהיר (במצב כהה נשמרת הפלטה הכהה)
+    document.body.classList.remove('custom-bg');
+    if (dark) {
+      root.style.removeProperty('--bg');
+      root.style.removeProperty('--text');
+    } else {
+      if (s.bg_gradient) {
+        root.style.setProperty('--bg-custom', s.bg_gradient);
+        document.body.classList.add('custom-bg');
+      } else if (s.bg_color) {
+        root.style.setProperty('--bg', s.bg_color);
+      }
+      if (s.text_color) root.style.setProperty('--text', s.text_color);
+    }
   },
 
   toggleTheme() {

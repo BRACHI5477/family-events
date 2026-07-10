@@ -40,6 +40,7 @@ const UI = {
     backdrop.querySelector('.modal-close').onclick = () => this.closeModal();
     backdrop.addEventListener('mousedown', (e) => { if (e.target === backdrop) this.closeModal(); });
     document.getElementById('modal-root').appendChild(backdrop);
+    this.attachPasswordToggles(backdrop);
     return backdrop;
   },
   closeModal() { document.getElementById('modal-root').innerHTML = ''; },
@@ -65,6 +66,32 @@ const UI = {
       out[inp.dataset.field] = v === '' ? null : v;
     });
     return out;
+  },
+
+  // מוסיף כפתור "עין" לכל שדה סיסמה, כדי לראות מה הוקלד
+  attachPasswordToggles(root = document) {
+    root.querySelectorAll('input[type="password"]').forEach((inp) => {
+      if (inp.dataset.pwToggle) return;          // כבר טופל
+      inp.dataset.pwToggle = '1';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'pw-wrap';
+      inp.parentNode.insertBefore(wrap, inp);
+      wrap.appendChild(inp);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pw-eye';
+      btn.textContent = '👁️';
+      btn.title = 'הצגת הסיסמה';
+      btn.onclick = () => {
+        const show = inp.type === 'password';
+        inp.type = show ? 'text' : 'password';
+        btn.textContent = show ? '🙈' : '👁️';
+        btn.title = show ? 'הסתרת הסיסמה' : 'הצגת הסיסמה';
+      };
+      wrap.appendChild(btn);
+    });
   },
 
   // בחירת תמונה מהמחשב, כיווץ אוטומטי, והעלאה לשרת. מחזיר {id, data_url}

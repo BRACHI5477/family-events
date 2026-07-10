@@ -224,6 +224,10 @@ function seed() {
     logo: instance.configured ? instance.logo : '👨‍👩‍👧‍👦',
     primary_color: '#4f8cff',
     accent_color: '#ff7a59',
+    font_family: "'Segoe UI', 'Assistant', Arial, sans-serif",
+    bg_color: '#eef1f6',
+    text_color: '#1e2430',
+    bg_gradient: '',                            // מעבר צבע לרקע (אופציונלי)
     default_date_display: 'combined',           // hebrew | gregorian | combined
     timezone: 'Asia/Jerusalem',
     ui_language: 'he',

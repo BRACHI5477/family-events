@@ -35,9 +35,11 @@ const Router = {
 
     const view = document.getElementById('view');
     view.innerHTML = '<div class="empty">טוען…</div>';
-    Promise.resolve(mod.render(view)).catch((err) => {
-      view.innerHTML = `<div class="empty">שגיאה בטעינת המסך: ${UI.esc(err.message)}</div>`;
-    });
+    Promise.resolve(mod.render(view))
+      .then(() => UI.attachPasswordToggles(view))
+      .catch((err) => {
+        view.innerHTML = `<div class="empty">שגיאה בטעינת המסך: ${UI.esc(err.message)}</div>`;
+      });
     // סגירת תפריט נייד
     document.getElementById('app').classList.remove('nav-open');
   },

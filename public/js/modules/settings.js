@@ -7,6 +7,34 @@ const ALL_MODULES = [
   ['users', 'משתמשים'], ['settings', 'הגדרות'], ['activity', 'לוג פעילות'],
 ];
 
+// גופנים זמינים (כולל גופנים עבריים המותקנים בווינדוס)
+const FONTS = [
+  ["'Segoe UI', 'Assistant', Arial, sans-serif", 'ברירת מחדל — נקי ומודרני'],
+  ["Arial, sans-serif", 'Arial — קלאסי'],
+  ["Tahoma, sans-serif", 'Tahoma — צר וברור'],
+  ["Verdana, sans-serif", 'Verdana — רחב ונוח'],
+  ["'Times New Roman', serif", 'Times New Roman — רשמי'],
+  ["Georgia, serif", 'Georgia — ספרותי'],
+  ["'David', 'Frank Ruehl', serif", 'דוד — עברי מסורתי'],
+  ["'Narkisim', serif", 'נרקיסים — עברי'],
+  ["'Guttman Yad', cursive", 'גוטמן יד — כתב יד'],
+  ["'Courier New', monospace", 'Courier — מכונת כתיבה'],
+];
+
+// ערכות נושא מוכנות
+const PRESETS = [
+  { name: '🔵 כחול קלאסי', primary: '#4f8cff', accent: '#ff7a59', bg: '#eef1f6', text: '#1e2430', grad: '' },
+  { name: '🌸 ורוד עדין', primary: '#e05f8f', accent: '#f5a25d', bg: '#fdf2f6', text: '#3d2430', grad: '' },
+  { name: '🌿 ירוק רגוע', primary: '#2f9e6e', accent: '#f0a500', bg: '#f0f7f3', text: '#1d3329', grad: '' },
+  { name: '💜 סגול מלכותי', primary: '#7c5cd6', accent: '#e8a33d', bg: '#f5f2fd', text: '#2b2440', grad: '' },
+  { name: '🌅 שקיעה', primary: '#e0644c', accent: '#f2a65a', bg: '#fdf4ef', text: '#3a2520',
+    grad: 'linear-gradient(135deg, #ffe8d6 0%, #fde2e4 100%)' },
+  { name: '🌊 ים', primary: '#2b7a9b', accent: '#43c6ac', bg: '#eef7fa', text: '#1c3540',
+    grad: 'linear-gradient(135deg, #e0f4f8 0%, #d7ebf5 100%)' },
+  { name: '🕯️ חמים', primary: '#a0703a', accent: '#c99b5e', bg: '#faf5ee', text: '#382a1c',
+    grad: 'linear-gradient(135deg, #f7efe2 0%, #f2e4d0 100%)' },
+];
+
 const SettingsModule = {
   title: 'הגדרות',
   icon: '⚙️',
@@ -32,6 +60,27 @@ const SettingsModule = {
             </div>
             <div class="field"><label>צבע ראשי</label><input type="color" data-field="primary_color" value="${s.primary_color || '#4f8cff'}"></div>
             <div class="field"><label>צבע הדגשה</label><input type="color" data-field="accent_color" value="${s.accent_color || '#ff7a59'}"></div>
+            <div class="field"><label>צבע רקע</label><input type="color" data-field="bg_color" value="${s.bg_color || '#eef1f6'}"></div>
+            <div class="field"><label>צבע הכתב</label><input type="color" data-field="text_color" value="${s.text_color || '#1e2430'}"></div>
+            <div class="field full"><label>גופן (סוג כתב)</label>
+              <select data-field="font_family" id="s-font">
+                ${FONTS.map(([v, l]) => `<option value="${UI.esc(v)}" ${s.font_family === v ? 'selected' : ''} style="font-family:${v}">${UI.esc(l)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field full"><label>רקע מיוחד (מעבר צבע) — ריק = צבע רקע רגיל</label>
+              <input data-field="bg_gradient" id="s-grad" value="${UI.esc(s.bg_gradient || '')}" placeholder="linear-gradient(135deg, #ffe8d6, #fde2e4)">
+            </div>
+            <div class="field full">
+              <label>🎨 ערכות נושא מוכנות — לחיצה ממלאת את השדות</label>
+              <div class="chips" id="s-presets">
+                ${PRESETS.map((p, i) => `<div class="chip-toggle" data-preset="${i}"
+                  style="border-color:${p.primary}">${UI.esc(p.name)}</div>`).join('')}
+              </div>
+            </div>
+            <div class="field full">
+              <button type="button" class="btn" id="s-preview">👁️ תצוגה מקדימה (ללא שמירה)</button>
+              <span class="muted" style="margin-inline-start:8px">רענון הדף יחזיר את העיצוב השמור</span>
+            </div>
             <div class="field"><label>ברירת מחדל לתצוגת תאריך</label><select data-field="default_date_display">
               <option value="combined" ${s.default_date_display === 'combined' ? 'selected' : ''}>משולב</option>
               <option value="hebrew" ${s.default_date_display === 'hebrew' ? 'selected' : ''}>עברי בלבד</option>
@@ -116,6 +165,29 @@ const SettingsModule = {
     };
 
     view.querySelector('#s-pass').onclick = () => this.changePassword();
+
+    // ערכות נושא מוכנות — ממלאות את השדות ומציגות מיד
+    const setField = (name, val) => { const el = view.querySelector(`[data-field="${name}"]`); if (el) el.value = val; };
+    const livePreview = () => {
+      const data = UI.formData(view.querySelector('#s-form'));
+      App.settings = { ...App.settings, ...data };
+      App.applyTheme();
+      App.applyBranding();
+    };
+    view.querySelectorAll('#s-presets .chip-toggle').forEach((c) => c.onclick = () => {
+      const p = PRESETS[c.dataset.preset];
+      setField('primary_color', p.primary);
+      setField('accent_color', p.accent);
+      setField('bg_color', p.bg);
+      setField('text_color', p.text);
+      setField('bg_gradient', p.grad);
+      view.querySelectorAll('#s-presets .chip-toggle').forEach((x) => x.classList.remove('on'));
+      c.classList.add('on');
+      livePreview();
+      UI.ok('העיצוב הוחל — לחצו "שמירת הגדרות" כדי לשמור');
+    });
+    view.querySelector('#s-preview').onclick = livePreview;
+    view.querySelector('#s-font').onchange = livePreview;
 
     // לוגו — העלאת תמונה
     const logoInput = view.querySelector('#s-logo');
