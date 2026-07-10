@@ -46,7 +46,9 @@ const UsersModule = {
             ${App.isSuper ? `<td>${UI.esc(u.family_name || (u.role === 'superadmin' ? 'כל המשפחות' : '—'))}</td>` : ''}
             <td class="muted">${UI.esc((u.created_at || '').slice(0, 10))}</td>
             <td>
-              ${u.role === 'pending' ? `<button class="btn btn-sm btn-primary" data-approve="${u.id}">✅ אשר</button>` : `<button class="btn btn-sm" data-edit="${u.id}">✏️</button>`}
+              ${u.role === 'pending' ? `<button class="btn btn-sm btn-primary" data-approve="${u.id}">✅ אשר</button>` : `
+                <button class="btn btn-sm" data-invite="${u.id}" title="שלח קישור התחברות במייל">📧</button>
+                <button class="btn btn-sm" data-edit="${u.id}">✏️</button>`}
               ${u.id === App.user.id ? '' : `<button class="btn btn-sm btn-danger" data-del="${u.id}">${u.role === 'pending' ? '❌ דחה' : '🗑️'}</button>`}
             </td>
           </tr>`).join('')}</tbody>
@@ -55,6 +57,7 @@ const UsersModule = {
       try { await API.post(`/users/${b.dataset.approve}/approve`, {}); UI.ok('הגישה אושרה — המשתמש יכול כעת להיכנס כצופה'); this.load(); }
       catch (e) { UI.err(e.message); }
     });
+    this.host.querySelectorAll('[data-invite]').forEach((b) => b.onclick = () => this.sendInvite(rows.find((u) => u.id == b.dataset.invite)));
     this.host.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => this.openForm(rows.find((u) => u.id == b.dataset.edit)));
     this.host.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
       if (await UI.confirm('למחוק משתמש זה?')) {
@@ -62,6 +65,42 @@ const UsersModule = {
         catch (e) { UI.err(e.message); }
       }
     });
+  },
+
+  // שליחת קישור התחברות במייל, עם אפשרות לסיסמה זמנית
+  sendInvite(u) {
+    const modal = UI.modal('שליחת קישור התחברות', `
+      <p class="muted" style="margin-top:0">יישלח מייל אל <b>${UI.esc(u.email || u.username)}</b> עם קישור לכניסה, שם המשתמש וההרשאה.</p>
+      <div class="field" style="margin-bottom:12px">
+        <label><input type="checkbox" id="inv-setpw"> להגדיר סיסמה זמנית ולכלול אותה במייל</label>
+      </div>
+      <div class="field hidden" id="inv-pwbox" style="margin-bottom:12px">
+        <label>סיסמה זמנית</label><input id="inv-pw" placeholder="לדוגמה: Shalom2026">
+        <div class="muted" style="margin-top:4px">⚠️ זה ידרוס את הסיסמה הנוכחית של המשתמש.</div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="inv-send">📧 שליחת המייל</button>
+        <button class="btn" id="inv-cancel">ביטול</button>
+      </div>`);
+    const chk = modal.querySelector('#inv-setpw');
+    chk.onchange = () => modal.querySelector('#inv-pwbox').classList.toggle('hidden', !chk.checked);
+    modal.querySelector('#inv-cancel').onclick = () => UI.closeModal();
+    modal.querySelector('#inv-send').onclick = async () => {
+      const body = {};
+      if (chk.checked) {
+        const pw = modal.querySelector('#inv-pw').value.trim();
+        if (pw.length < 4) { UI.err('סיסמה זמנית חייבת להכיל לפחות 4 תווים'); return; }
+        body.temp_password = pw;
+      }
+      UI.toast('⏳ שולח מייל...');
+      try {
+        const r = await API.post(`/users/${u.id}/send-invite`, body);
+        UI.closeModal();
+        if (r.status === 'sent') UI.ok('ההזמנה נשלחה אל ' + r.to);
+        else if (r.status === 'preview') UI.err('SMTP לא מוגדר — המייל לא נשלח');
+        else UI.err('כשל שליחה: ' + (r.error || ''));
+      } catch (err) { UI.err(err.message); }
+    };
   },
 
   openForm(u) {

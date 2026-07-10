@@ -5,9 +5,19 @@ const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { requireAuth, requireRole } = require('../auth');
 const { logAction } = require('../services/activityLog');
+const { sendSystemEmail } = require('../services/email');
 
 const router = express.Router();
 router.use(requireAuth);
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function baseUrl(req) {
+  return process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+const ROLE_HE = { superadmin: 'מנהל/ת-על', admin: 'מנהל/ת', editor: 'עורך/ת', viewer: 'צפייה בלבד' };
 
 // תפקידים שמותר להעניק: מנהלת-על יכולה הכול; מנהל משפחה — עורך/צפייה בלבד
 function allowedRoles(req) {
@@ -68,6 +78,49 @@ router.put('/:id', requireRole('admin'), (req, res) => {
   }
   logAction(req.user.userId, 'update', 'user', `עדכון משתמש #${req.params.id}`);
   res.json(db.prepare('SELECT id, username, full_name, email, role, family_id FROM Users WHERE id = ?').get(req.params.id));
+});
+
+// שליחת קישור התחברות למשתמש (הזמנה). אפשר לצרף סיסמה זמנית חדשה.
+router.post('/:id/send-invite', requireRole('admin'), async (req, res) => {
+  const u = db.prepare('SELECT * FROM Users WHERE id = ?').get(req.params.id);
+  if (!u) return res.status(404).json({ error: 'לא נמצא' });
+  if (!req.isSuper && u.family_id !== req.familyId) {
+    return res.status(403).json({ error: 'אין הרשאה למשתמש זה' });
+  }
+  const to = u.email || u.username;
+  if (!to || !to.includes('@')) {
+    return res.status(400).json({ error: 'למשתמש אין כתובת דוא"ל. ערכו אותו והוסיפו מייל.' });
+  }
+
+  // סיסמה זמנית (אופציונלי) — אם נשלחה, מוגדרת עכשיו
+  const tempPassword = req.body && req.body.temp_password;
+  if (tempPassword) {
+    db.prepare('UPDATE Users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(String(tempPassword), 10), u.id);
+  }
+
+  const link = baseUrl(req);
+  const family = u.family_id ? db.prepare('SELECT name FROM Families WHERE id = ?').get(u.family_id) : null;
+  const inviter = db.prepare('SELECT full_name, username FROM Users WHERE id = ?').get(req.user.userId);
+
+  const result = await sendSystemEmail({
+    to,
+    subject: 'הוזמנת ליומן האירועים המשפחתי 🎉',
+    title: '🎉 הוזמנת ליומן האירועים המשפחתי',
+    bodyHtml: `<p>שלום ${esc(u.full_name || u.username)},</p>`
+      + `<p><b>${esc(inviter.full_name || inviter.username)}</b> הזמין/ה אותך ליומן האירועים המשפחתי`
+      + `${family ? ` של <b>${esc(family.name)}</b>` : ''}.</p>`
+      + '<p style="background:#f6f8fc;padding:14px;border-radius:10px;line-height:2">'
+      + `<b>שם משתמש:</b> ${esc(u.username)}<br>`
+      + (tempPassword ? `<b>סיסמה:</b> ${esc(tempPassword)}<br>` : '')
+      + `<b>הרשאה:</b> ${ROLE_HE[u.role] || u.role}</p>`
+      + (tempPassword ? '<p style="color:#888;font-size:14px">מומלץ להחליף סיסמה אחרי הכניסה הראשונה (הגדרות → החלפת סיסמה).</p>' : '<p style="color:#888;font-size:14px">אם שכחת את הסיסמה — לחצ/י "שכחתי סיסמה" במסך הכניסה.</p>'),
+    buttonText: 'כניסה ליומן',
+    buttonUrl: link,
+    userId: req.user.userId,
+  });
+
+  logAction(req.user.userId, 'email', 'user', `נשלחה הזמנה ל-${to}`);
+  res.json({ ...result, to });
 });
 
 // אישור בקשת גישה — הופך משתמש ממתין לצופה (ברירת מחדל) או לתפקיד אחר
