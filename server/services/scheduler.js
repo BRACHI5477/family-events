@@ -56,8 +56,10 @@ function generateReminders() {
     }
     const schedStr = fmtGreg(schedDate);
 
+    // אם כבר קיימת תזכורת לאותו כלל ולאותו תאריך — לא יוצרים שוב.
+    // (רק תזכורת שנכשלה תיווצר מחדש, כדי לאפשר ניסיון חוזר)
     const exists = db.prepare(
-      "SELECT id FROM Reminders WHERE rule_id = ? AND scheduled_for = ? AND status != 'sent'"
+      "SELECT id FROM Reminders WHERE rule_id = ? AND scheduled_for = ? AND status != 'failed'"
     ).get(rule.id, schedStr);
     if (!exists) {
       db.prepare('INSERT INTO Reminders (rule_id, event_id, scheduled_for, status) VALUES (?,?,?,?)')
@@ -135,17 +137,27 @@ function opportunisticRun() {
   runNow('ביקור באתר').catch(() => {});
 }
 
+// ניקוי כפילויות שנוצרו בעבר: תזכורת ממתינה שכבר נשלחה לאותו כלל ותאריך
+function cleanupDuplicateReminders() {
+  const r = db.prepare(`DELETE FROM Reminders WHERE status = 'pending' AND EXISTS (
+    SELECT 1 FROM Reminders r2 WHERE r2.rule_id = Reminders.rule_id
+      AND r2.scheduled_for = Reminders.scheduled_for AND r2.status = 'sent')`).run();
+  if (r.changes > 0) logAction(null, 'update', 'scheduler', `נוקו ${r.changes} תזכורות כפולות`);
+  return r.changes;
+}
+
 let started = false;
 function start() {
   if (started) return;
   started = true;
   // כל 15 דקות — כדי לכבד את שעת השליחה שהוגדרה בכל תזכורת
   cron.schedule('*/15 * * * *', () => { runNow('תזמון'); });
-  // ריצה ראשונית בעת עליית השרת (יצירת תזכורות בלבד, ללא שליחה)
-  try { generateReminders(); } catch (e) { /* ignore */ }
+  // ריצה ראשונית בעת עליית השרת (ניקוי + יצירת תזכורות בלבד, ללא שליחה)
+  try { cleanupDuplicateReminders(); generateReminders(); } catch (e) { /* ignore */ }
 }
 
 module.exports = {
+  cleanupDuplicateReminders,
   start, runNow, opportunisticRun, generateReminders, processDueReminders,
   reminderDateFor, nextOccurrence, offsetDays, OFFSET_DAYS, timeHasCome,
 };
