@@ -65,6 +65,7 @@ function buildApp() {
   app.use('/api/reports', require('./routes/reports'));
   app.use('/api/users', require('./routes/users'));
   app.use('/api/families', require('./routes/families'));
+  app.use('/api/images', require('./routes/images'));
   app.use('/api/backup', require('./routes/backup'));
 
   // Static frontend — ללא cache כדי שעדכונים ייטענו תמיד

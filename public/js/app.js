@@ -134,7 +134,19 @@ const App = {
     const name = this.settings.system_name || 'יומן אירועים משפחתי';
     const logo = this.settings.logo || '👨‍👩‍👧‍👦';
     document.getElementById('brand-name').textContent = name;
-    document.getElementById('brand-logo').textContent = logo;
+    // הלוגו יכול להיות אימוג'י או תמונה שהועלתה (data URL)
+    const setLogo = (el, size) => {
+      if (!el) return;
+      if (logo.startsWith('data:image')) {
+        el.innerHTML = `<img src="${logo}" alt="" style="height:${size};width:${size};object-fit:cover;border-radius:8px;display:block">`;
+      } else {
+        el.textContent = logo;
+      }
+    };
+    setLogo(document.getElementById('brand-logo'), '32px');
+    setLogo(document.getElementById('login-logo'), '64px');
+    const loginTitle = document.getElementById('login-title');
+    if (loginTitle) loginTitle.textContent = name;
     document.title = name;
   },
 

@@ -23,7 +23,13 @@ const SettingsModule = {
           <h3>🎨 כללי ומיתוג</h3>
           <div class="form-grid">
             <div class="field"><label>שם המערכת</label><input data-field="system_name" value="${UI.esc(s.system_name || '')}"></div>
-            <div class="field"><label>לוגו (אימוג'י)</label><input data-field="logo" value="${UI.esc(s.logo || '')}"></div>
+            <div class="field"><label>לוגו — אימוג'י או תמונה</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input data-field="logo" id="s-logo" value="${UI.esc(s.logo || '')}" style="flex:1" placeholder="אימוג'י, או העלו תמונה">
+                <button type="button" class="btn" id="s-logo-upload">🖼️ העלאת תמונה</button>
+              </div>
+              <div id="s-logo-preview" style="margin-top:8px"></div>
+            </div>
             <div class="field"><label>צבע ראשי</label><input type="color" data-field="primary_color" value="${s.primary_color || '#4f8cff'}"></div>
             <div class="field"><label>צבע הדגשה</label><input type="color" data-field="accent_color" value="${s.accent_color || '#ff7a59'}"></div>
             <div class="field"><label>ברירת מחדל לתצוגת תאריך</label><select data-field="default_date_display">
@@ -110,6 +116,26 @@ const SettingsModule = {
     };
 
     view.querySelector('#s-pass').onclick = () => this.changePassword();
+
+    // לוגו — העלאת תמונה
+    const logoInput = view.querySelector('#s-logo');
+    const logoPrev = view.querySelector('#s-logo-preview');
+    const renderLogoPreview = () => {
+      const v = logoInput.value.trim();
+      logoPrev.innerHTML = v.startsWith('data:image')
+        ? `<img src="${v}" style="height:60px;border-radius:10px;border:1px solid var(--border)">
+           <button type="button" class="btn btn-sm" id="s-logo-clear" style="margin-inline-start:8px">הסרה</button>`
+        : (v ? `<span style="font-size:40px">${UI.esc(v)}</span>` : '');
+      const clr = logoPrev.querySelector('#s-logo-clear');
+      if (clr) clr.onclick = () => { logoInput.value = '👨‍👩‍👧‍👦'; renderLogoPreview(); };
+    };
+    renderLogoPreview();
+    logoInput.oninput = renderLogoPreview;
+    view.querySelector('#s-logo-upload').onclick = async () => {
+      UI.toast('⏳ מעלה תמונה...');
+      const img = await UI.pickImage({ maxSize: 256 });
+      if (img) { logoInput.value = img.data_url; renderLogoPreview(); UI.ok('התמונה הועלתה — לחצו "שמירת הגדרות"'); }
+    };
 
     // בדיקת חיבור SMTP — שומר קודם את מה שבטופס, ואז בודק
     view.querySelector('#s-test-smtp').onclick = async (e) => {

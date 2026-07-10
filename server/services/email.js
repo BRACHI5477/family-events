@@ -108,9 +108,11 @@ function buildContext(event, occurrenceDate) {
   const member = event.member_id ? db.prepare('SELECT * FROM FamilyMembers WHERE id = ?').get(event.member_id) : null;
   const from = occurrenceDate ? new Date(occurrenceDate + 'T12:00:00') : new Date();
   const age = member ? ageForEvent(event, member, from) : { greg: null, hebrew: null };
+  // תמונה למייל: קודם התמונה של האירוע, אחרת התמונה של בעל האירוע
   let image = null;
-  if (member && member.image_id) {
-    const img = db.prepare('SELECT data_url FROM Images WHERE id = ?').get(member.image_id);
+  const imgId = event.image_id || (member && member.image_id);
+  if (imgId) {
+    const img = db.prepare('SELECT data_url FROM Images WHERE id = ?').get(imgId);
     image = img ? img.data_url : null;
   }
   const dateStr = occurrenceDate || event.gregorian_date || '';

@@ -238,6 +238,13 @@ const EventsModule = {
           </div>
           <div class="field"><label>צבע</label><input type="color" data-field="color" value="${e.color || '#4f8cff'}"></div>
           <div class="field full"><label>📍 מיקום האירוע</label><input data-field="location" value="${g('location')}" placeholder="אולם / כתובת"></div>
+          <div class="field full"><label>🖼️ תמונת האירוע (תופיע במייל)</label>
+            <input type="hidden" data-field="image_id" id="e-imgid" value="${e.image_id || ''}">
+            <div style="display:flex;gap:10px;align-items:center">
+              <button type="button" class="btn" id="e-img-upload">📷 בחירת תמונה</button>
+              <div id="e-img-preview"></div>
+            </div>
+          </div>
           <div class="field full"><label>הערות</label><textarea data-field="notes">${g('notes')}</textarea></div>
           ${e.id ? '' : `
           <div class="field full" style="border-top:1px solid var(--border);padding-top:12px">
@@ -303,6 +310,24 @@ const EventsModule = {
     modal.querySelectorAll('#e-datemode button').forEach((b) => b.onclick = () => { dateMode = b.dataset.dm; showMode(); });
     [hday, hmonth, hyear].forEach((el) => { el.oninput = updatePreview; el.onchange = updatePreview; });
     showMode();
+
+    // תמונת האירוע
+    const imgId = modal.querySelector('#e-imgid');
+    const imgPrev = modal.querySelector('#e-img-preview');
+    const renderImg = (url) => {
+      imgPrev.innerHTML = url
+        ? `<img src="${url}" style="height:70px;border-radius:10px;border:1px solid var(--border)">
+           <button type="button" class="btn btn-sm btn-danger" id="e-img-clear" style="margin-inline-start:8px">הסרה</button>`
+        : '<span class="muted">לא נבחרה תמונה</span>';
+      const clr = imgPrev.querySelector('#e-img-clear');
+      if (clr) clr.onclick = () => { imgId.value = ''; renderImg(null); };
+    };
+    renderImg(e.image_url || null);
+    modal.querySelector('#e-img-upload').onclick = async () => {
+      UI.toast('⏳ מעלה תמונה...');
+      const img = await UI.pickImage({ maxSize: 600 });
+      if (img) { imgId.value = img.id; renderImg(img.data_url); UI.ok('התמונה נבחרה'); }
+    };
 
     // מתג תזכורת אוטומטית (אירוע חדש בלבד)
     const autoRem = modal.querySelector('#e-autorem');

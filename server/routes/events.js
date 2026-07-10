@@ -53,6 +53,9 @@ function enrich(ev, fromDate = new Date()) {
     hebrew_date_text: base ? gregorianToHebrewText(base) : (ev.hebrew_date || ''),
     // חלקי התאריך העברי — כדי שטופס העריכה יטען את התאריך האמיתי ולא ברירת מחדל
     hebrew_parts: base ? hebrewParts(base) : null,
+    image_url: ev.image_id
+      ? (db.prepare('SELECT data_url FROM Images WHERE id = ?').get(ev.image_id) || {}).data_url || null
+      : null,
     next_gregorian: nextGreg,
     next_hebrew: nextHeb,
     age,
