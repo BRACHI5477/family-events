@@ -2,11 +2,17 @@
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../db');
 const { createSession, destroySession, requireAuth, getSession } = require('../auth');
 const { logAction } = require('../services/activityLog');
+const { sendSystemEmail } = require('../services/email');
 
 const router = express.Router();
+
+function escapeHtmlSafe(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 // מידע משתמש מלא + הקשר משפחה
 function userInfo(req) {
@@ -98,17 +104,58 @@ router.post('/request-access', (req, res) => {
 });
 
 // שכחתי סיסמה (דמו — מאפס ל-1234)
-// שכחתי סיסמה — אינו מאפס סיסמה! רק מתעד בקשה ומפנה למנהל.
-// (איפוס עצמי ללא אימות זהות הוא פרצת אבטחה)
-router.post('/forgot-password', (req, res) => {
+// כתובת הבסיס של האתר (לבניית קישורים במיילים)
+function baseUrl(req) {
+  return process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+// שכחתי סיסמה — שולח מייל עם קישור איפוס חד-פעמי (תקף לשעה).
+// הנתונים כמובן נשארים; רק הסיסמה משתנה.
+router.post('/forgot-password', async (req, res) => {
   const { username } = req.body || {};
-  const user = db.prepare('SELECT id FROM Users WHERE username = ?').get(username);
-  if (user) logAction(user.id, 'update', 'auth', `בקשת איפוס סיסמה: ${username}`);
+  const user = db.prepare('SELECT * FROM Users WHERE username = ?').get(username);
+
+  if (user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // שעה
+    db.prepare('UPDATE Users SET reset_token = ?, reset_expires = ? WHERE id = ?').run(token, expires, user.id);
+
+    const link = `${baseUrl(req)}/#/reset?token=${token}`;
+    const to = user.email || user.username;
+    logAction(user.id, 'update', 'auth', `בקשת איפוס סיסמה: ${username}`);
+    await sendSystemEmail({
+      to,
+      subject: 'איפוס סיסמה — יומן אירועים משפחתי',
+      title: '🔑 איפוס סיסמה',
+      bodyHtml: `<p>שלום ${escapeHtmlSafe(user.full_name || user.username)},</p>`
+        + '<p>קיבלנו בקשה לאיפוס הסיסמה שלך. לחצו על הכפתור כדי לבחור סיסמה חדשה.</p>'
+        + '<p style="color:#888;font-size:14px">הקישור תקף לשעה אחת. אם לא ביקשתם זאת — התעלמו מהמייל, שום דבר לא ישתנה.</p>',
+      buttonText: 'בחירת סיסמה חדשה',
+      buttonUrl: link,
+      userId: user.id,
+    });
+  }
+
   // תשובה זהה תמיד, כדי לא לחשוף אילו משתמשים קיימים
-  res.json({
-    ok: true,
-    message: 'הבקשה נרשמה. לאיפוס סיסמה יש לפנות למנהל/ת המערכת, שיאפס/תאפס עבורך במסך המשתמשים.',
-  });
+  res.json({ ok: true, message: 'אם המשתמש קיים, נשלח אליו מייל עם קישור לאיפוס הסיסמה.' });
+});
+
+// איפוס בפועל — לפי האסימון מהמייל
+router.post('/reset-password', (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) return res.status(400).json({ error: 'חסר אסימון או סיסמה' });
+  if (String(password).length < 4) return res.status(400).json({ error: 'הסיסמה חייבת להכיל לפחות 4 תווים' });
+
+  const user = db.prepare('SELECT * FROM Users WHERE reset_token = ?').get(token);
+  if (!user) return res.status(400).json({ error: 'הקישור אינו תקף' });
+  if (!user.reset_expires || new Date(user.reset_expires) < new Date()) {
+    return res.status(400).json({ error: 'הקישור פג תוקף. בקשו קישור חדש.' });
+  }
+
+  db.prepare('UPDATE Users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?')
+    .run(bcrypt.hashSync(String(password), 10), user.id);
+  logAction(user.id, 'update', 'auth', 'סיסמה אופסה דרך קישור במייל');
+  res.json({ ok: true, message: 'הסיסמה עודכנה! אפשר להתחבר.' });
 });
 
 module.exports = router;

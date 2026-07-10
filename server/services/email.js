@@ -231,4 +231,50 @@ async function sendLocationEmail({ event, occurrenceDate, recipients, note, user
   }
 }
 
-module.exports = { renderTemplate, buildContext, pickTemplate, sendEventEmail, sendLocationEmail, buildTransport };
+// מייל כללי (איפוס סיסמה / הזמנת משתמש) — לא קשור לאירועים
+async function sendSystemEmail({ to, subject, title, bodyHtml, buttonText, buttonUrl, userId }) {
+  const s = getAllSettings();
+  const c = mailConfig();
+  const accent = s.primary_color || '#4f8cff';
+  const systemName = s.system_name || 'יומן אירועים משפחתי';
+
+  const button = buttonUrl
+    ? `<p style="text-align:center;margin:26px 0"><a href="${buttonUrl}" style="background:${accent};color:#fff;padding:13px 30px;border-radius:10px;text-decoration:none;font-size:16px;display:inline-block">${escapeHtml(buttonText || 'המשך')}</a></p>`
+      + `<p style="font-size:12px;color:#999;text-align:center;word-break:break-all">אם הכפתור לא עובד, העתיקו את הכתובת:<br>${escapeHtml(buttonUrl)}</p>`
+    : '';
+
+  const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;padding:0;background:#eef1f6;font-family:Arial,Helvetica,sans-serif;">
+    <div style="max-width:560px;margin:24px auto;background:#fff;color:#222;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.12);">
+      <div style="background:${accent};padding:24px 20px;text-align:center;color:#fff;">
+        <h1 style="margin:0;font-size:22px;">${escapeHtml(title)}</h1>
+      </div>
+      <div style="padding:24px 28px;line-height:1.8;font-size:16px;">
+        ${bodyHtml}
+        ${button}
+      </div>
+      <div style="padding:16px 28px;border-top:1px solid #eee;color:#888;font-size:13px;text-align:center;">${escapeHtml(systemName)}</div>
+    </div>
+  </body></html>`;
+
+  const transport = buildTransport();
+  if (!transport) {
+    db.prepare('INSERT INTO EmailLog (to_addr, subject, status, error) VALUES (?,?,?,?)')
+      .run(to, subject, 'preview', 'SMTP לא מוגדר');
+    return { status: 'preview', html, to };
+  }
+  try {
+    await transport.sendMail({ from: `"${c.senderName}" <${c.senderEmail}>`, to, subject, html });
+    db.prepare('INSERT INTO EmailLog (to_addr, subject, status) VALUES (?,?,?)').run(to, subject, 'sent');
+    logAction(userId, 'email', 'system', `${subject} -> ${to}`);
+    return { status: 'sent', to };
+  } catch (err) {
+    db.prepare('INSERT INTO EmailLog (to_addr, subject, status, error) VALUES (?,?,?,?)').run(to, subject, 'failed', err.message);
+    logAction(userId, 'error', 'system', `כשל שליחה: ${err.message}`);
+    return { status: 'failed', error: err.message };
+  }
+}
+
+module.exports = {
+  renderTemplate, buildContext, pickTemplate, sendEventEmail, sendLocationEmail,
+  sendSystemEmail, buildTransport, mailConfig,
+};

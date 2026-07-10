@@ -24,6 +24,9 @@ const App = {
   async init() {
     this.bindLogin();
     this.bindChrome();
+    // קישור איפוס סיסמה מהמייל: #/reset?token=...
+    const m = location.hash.match(/^#\/reset\?token=([A-Za-z0-9]+)/);
+    if (m) { this.showLogin(); this.showResetForm(m[1]); return; }
     try {
       const me = await API.get('/auth/me');
       this.setMe(me);
@@ -31,6 +34,27 @@ const App = {
     } catch {
       this.showLogin();
     }
+  },
+
+  // מסך בחירת סיסמה חדשה (אחרי לחיצה על הקישור במייל)
+  showResetForm(token) {
+    const modal = UI.modal('בחירת סיסמה חדשה', `
+      <p class="muted" style="margin-top:0">בחר/י סיסמה חדשה. כל הנתונים שלך נשמרים — רק הסיסמה משתנה.</p>
+      <form id="rs-form">
+        <div class="field" style="margin-bottom:12px"><label>סיסמה חדשה</label><input type="password" data-field="password" required minlength="4"></div>
+        <div class="field" style="margin-bottom:12px"><label>אימות סיסמה</label><input type="password" id="rs-confirm" required></div>
+        <div class="form-actions"><button class="btn btn-primary">שמירת סיסמה</button></div>
+      </form>`);
+    modal.querySelector('#rs-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const data = UI.formData(modal.querySelector('#rs-form'));
+      if (data.password !== modal.querySelector('#rs-confirm').value) { UI.err('הסיסמאות אינן תואמות'); return; }
+      try {
+        const r = await API.post('/auth/reset-password', { token, password: data.password });
+        UI.closeModal(); UI.ok(r.message || 'הסיסמה עודכנה');
+        location.hash = '';
+      } catch (err) { UI.err(err.message); }
+    };
   },
 
   setMe(me) {
@@ -155,10 +179,13 @@ const App = {
     };
     document.getElementById('link-forgot').onclick = async (e) => {
       e.preventDefault();
-      const username = document.getElementById('login-username').value || prompt('שם משתמש לאיפוס:');
+      const username = document.getElementById('login-username').value || prompt('הזן/י את שם המשתמש או הדוא"ל שלך:');
       if (!username) return;
-      const r = await API.post('/auth/forgot-password', { username });
-      UI.ok(r.message || 'אם המשתמש קיים, נשלחה הנחיה');
+      UI.toast('⏳ שולח מייל...');
+      try {
+        const r = await API.post('/auth/forgot-password', { username });
+        UI.ok(r.message || 'אם המשתמש קיים, נשלח אליו מייל');
+      } catch (err) { UI.err(err.message); }
     };
     const reqLink = document.getElementById('link-request');
     if (reqLink) reqLink.onclick = (e) => { e.preventDefault(); this.requestAccess(); };

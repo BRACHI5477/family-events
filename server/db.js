@@ -171,6 +171,8 @@ function ensureColumn(table, col, def) {
 ensureColumn('Events', 'location', 'TEXT');
 ensureColumn('Events', 'recurring', 'INTEGER DEFAULT 1');
 ensureColumn('Users', 'family_id', 'INTEGER');
+ensureColumn('Users', 'reset_token', 'TEXT');       // אסימון חד-פעמי לאיפוס סיסמה
+ensureColumn('Users', 'reset_expires', 'TEXT');     // תפוגת האסימון
 ensureColumn('FamilyMembers', 'family_id', 'INTEGER');
 ensureColumn('Events', 'family_id', 'INTEGER');
 
